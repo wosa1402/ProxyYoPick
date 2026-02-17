@@ -1,0 +1,16 @@
+# Binaries
+proxyyopick
+*.exe
+
+# Output
+output/
+
+# IDE & tools
+.mcp.json
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
