@@ -13,6 +13,12 @@ type Proxy struct {
 	Location    string `json:"location,omitempty"`
 	Country     string `json:"country,omitempty"`
 	CountryCode string `json:"country_code,omitempty"`
+	// IP quality fields (from ip-api.com)
+	IsProxy   bool   `json:"is_proxy"`
+	IsHosting bool   `json:"is_hosting"`
+	IsMobile  bool   `json:"is_mobile"`
+	ISP       string `json:"isp,omitempty"`
+	Quality   string `json:"quality,omitempty"` // "residential", "mobile", "datacenter", "proxy"
 }
 
 // Address returns the "ip:port" string.

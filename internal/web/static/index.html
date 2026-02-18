@@ -124,6 +124,10 @@
         .badge-ok { background: #052e16; color: #4ade80; }
         .badge-slow { background: #3b2f12; color: #fbbf24; }
         .badge-fail { background: #450a0a; color: #f87171; }
+        .badge-res { background: #052e16; color: #4ade80; }
+        .badge-mob { background: #1e3a5f; color: #38bdf8; }
+        .badge-dc { background: #3b2f12; color: #fbbf24; }
+        .badge-proxy { background: #450a0a; color: #f87171; }
         .empty-state { text-align: center; padding: 4rem 2rem; color: #64748b; }
         .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
         .copy-btn {
@@ -177,6 +181,13 @@
                 <select id="filterCountryAuto" onchange="renderTable('auto')">
                     <option value="all">全部国家</option>
                 </select>
+                <select id="filterQualityAuto" onchange="renderTable('auto')">
+                    <option value="all">全部质量</option>
+                    <option value="residential">住宅 IP</option>
+                    <option value="mobile">移动 IP</option>
+                    <option value="datacenter">机房 IP</option>
+                    <option value="proxy">代理 IP</option>
+                </select>
                 <input type="text" id="filterIPAuto" placeholder="搜索 IP..." oninput="renderTable('auto')">
             </div>
             <div class="table-wrapper">
@@ -218,6 +229,13 @@
                 </select>
                 <select id="filterCountryManual" onchange="renderTable('manual')">
                     <option value="all">全部国家</option>
+                </select>
+                <select id="filterQualityManual" onchange="renderTable('manual')">
+                    <option value="all">全部质量</option>
+                    <option value="residential">住宅 IP</option>
+                    <option value="mobile">移动 IP</option>
+                    <option value="datacenter">机房 IP</option>
+                    <option value="proxy">代理 IP</option>
                 </select>
                 <input type="text" id="filterIPManual" placeholder="搜索 IP..." oninput="renderTable('manual')">
             </div>
@@ -301,6 +319,17 @@ function updateTabCounts() {
 // -- Stats rendering --
 function renderStats(pool) {
     const s = state[pool].stats;
+    const results = state[pool].results;
+    // Count quality types
+    let qRes = 0, qMob = 0, qDc = 0, qProxy = 0;
+    results.forEach(r => {
+        switch (r.proxy.quality) {
+            case 'residential': qRes++; break;
+            case 'mobile': qMob++; break;
+            case 'datacenter': qDc++; break;
+            case 'proxy': qProxy++; break;
+        }
+    });
     const el = document.getElementById('stats' + cap(pool));
     el.innerHTML = `
         <div class="stat-card"><div class="label">总代理数</div><div class="value blue">${s.total || '-'}</div></div>
@@ -308,6 +337,12 @@ function renderStats(pool) {
         <div class="stat-card"><div class="label">失败</div><div class="value red">${s.fail || '-'}</div></div>
         <div class="stat-card"><div class="label">最快延迟</div><div class="value yellow">${s.fastest_ms ? s.fastest_ms + ' ms' : '-'}</div></div>
         <div class="stat-card"><div class="label">平均延迟</div><div class="value yellow">${s.avg_ms ? s.avg_ms + ' ms' : '-'}</div></div>
+        <div class="stat-card"><div class="label">住宅/移动/机房/代理</div><div class="value" style="font-size:1.2rem">
+            <span style="color:#4ade80">${qRes}</span> /
+            <span style="color:#38bdf8">${qMob}</span> /
+            <span style="color:#fbbf24">${qDc}</span> /
+            <span style="color:#f87171">${qProxy}</span>
+        </div></div>
     `;
     const timeEl = document.getElementById('updateTime' + cap(pool));
     if (s.updated_at) timeEl.textContent = '上次更新: ' + s.updated_at;
@@ -319,6 +354,7 @@ function renderTable(pool) {
     const statusFilter = document.getElementById('filterStatus' + cap(pool)).value;
     const countryFilter = document.getElementById('filterCountry' + cap(pool)).value;
     const ipFilter = document.getElementById('filterIP' + cap(pool)).value.toLowerCase();
+    const qualityFilter = document.getElementById('filterQuality' + cap(pool)).value;
 
     // Update country filter options
     const countrySel = document.getElementById('filterCountry' + cap(pool));
@@ -337,6 +373,7 @@ function renderTable(pool) {
         if (statusFilter === 'fail' && r.success) return false;
         if (countryFilter !== 'all' && r.proxy.country_code !== countryFilter) return false;
         if (ipFilter && !r.proxy.ip.includes(ipFilter)) return false;
+        if (qualityFilter !== 'all' && r.proxy.quality !== qualityFilter) return false;
         return true;
     });
 
@@ -346,6 +383,9 @@ function renderTable(pool) {
             case 'ip': va = a.proxy.ip; vb = b.proxy.ip; break;
             case 'port': va = a.proxy.port; vb = b.proxy.port; break;
             case 'country': va = a.proxy.country_code || ''; vb = b.proxy.country_code || ''; break;
+            case 'quality':
+                const qOrder = {residential: 0, mobile: 1, datacenter: 2, proxy: 3};
+                va = qOrder[a.proxy.quality] ?? 4; vb = qOrder[b.proxy.quality] ?? 4; break;
             case 'latency_ms':
                 va = a.success ? a.latency_ms : 999999;
                 vb = b.success ? b.latency_ms : 999999; break;
@@ -370,6 +410,7 @@ function renderTable(pool) {
         <th onclick="setSort('ip')">IP<span class="sort-arrow">${arrow('ip')}</span></th>
         <th onclick="setSort('port')">端口<span class="sort-arrow">${arrow('port')}</span></th>
         <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
+        <th onclick="setSort('quality')">质量<span class="sort-arrow">${arrow('quality')}</span></th>
         <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
         <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
         <th>操作</th>
@@ -390,12 +431,16 @@ function renderTable(pool) {
         const cc = r.proxy.country_code || '-';
         const cn = r.proxy.country || '';
         const countryDisplay = cc !== '-' ? `<span title="${cn}">${countryToFlag(cc)} ${cc}</span>` : '-';
+        const qMap = {residential: ['住宅','badge-res'], mobile: ['移动','badge-mob'], datacenter: ['机房','badge-dc'], proxy: ['代理','badge-proxy']};
+        const [qLabel, qClass] = qMap[r.proxy.quality] || ['-',''];
+        const qualityBadge = qClass ? `<span class="badge ${qClass}" title="${r.proxy.isp || ''}">${qLabel}</span>` : '-';
 
         html += `<tr>
             <td>${i + 1}</td>
             <td class="mono">${r.proxy.ip}</td>
             <td class="mono">${r.proxy.port}</td>
             <td>${countryDisplay}</td>
+            <td>${qualityBadge}</td>
             <td class="mono">${latency}</td>
             <td>${statusBadge}</td>
             <td><button class="copy-btn" onclick="copyAddr(this, '${addr}')">复制</button></td>

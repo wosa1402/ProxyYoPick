@@ -16,6 +16,7 @@ const (
 	batchURL  = "http://ip-api.com/batch"
 	batchSize = 100
 	rateDelay = 1500 * time.Millisecond // ip-api.com free tier: ~45 req/min
+	fields    = "query,status,country,countryCode,proxy,hosting,mobile,isp"
 )
 
 // ipAPIResponse is the response from ip-api.com batch endpoint.
@@ -24,6 +25,10 @@ type ipAPIResponse struct {
 	Status      string `json:"status"`
 	Country     string `json:"country"`
 	CountryCode string `json:"countryCode"`
+	Proxy       bool   `json:"proxy"`
+	Hosting     bool   `json:"hosting"`
+	Mobile      bool   `json:"mobile"`
+	ISP         string `json:"isp"`
 }
 
 // batchRequest is a single item in the batch request body.
@@ -32,7 +37,22 @@ type batchRequest struct {
 	Fields string `json:"fields"`
 }
 
-// LookupCountries fills the Country and CountryCode fields for each proxy.
+// classifyQuality returns a quality label based on IP characteristics.
+// Priority: proxy (worst) < datacenter < mobile < residential (best)
+func classifyQuality(r ipAPIResponse) string {
+	if r.Proxy {
+		return "proxy"
+	}
+	if r.Hosting {
+		return "datacenter"
+	}
+	if r.Mobile {
+		return "mobile"
+	}
+	return "residential"
+}
+
+// LookupCountries fills geo and quality fields for each proxy.
 // It uses ip-api.com batch API (100 IPs per request, free, no key needed).
 func LookupCountries(ctx context.Context, proxies model.ProxyList) {
 	if len(proxies) == 0 {
@@ -40,7 +60,7 @@ func LookupCountries(ctx context.Context, proxies model.ProxyList) {
 	}
 
 	total := len(proxies)
-	fmt.Printf("🌍 正在查询 %d 个 IP 的归属国...\n", total)
+	fmt.Printf("🌍 正在查询 %d 个 IP 的归属地和质量...\n", total)
 
 	// Build IP -> proxy index map (one IP may appear in multiple proxies)
 	ipIndex := make(map[string][]int, total)
@@ -74,11 +94,16 @@ func LookupCountries(ctx context.Context, proxies model.ProxyList) {
 			for _, idx := range ipIndex[r.Query] {
 				proxies[idx].Country = r.Country
 				proxies[idx].CountryCode = r.CountryCode
+				proxies[idx].IsProxy = r.Proxy
+				proxies[idx].IsHosting = r.Hosting
+				proxies[idx].IsMobile = r.Mobile
+				proxies[idx].ISP = r.ISP
+				proxies[idx].Quality = classifyQuality(r)
 			}
 		}
 
 		done += len(batch)
-		fmt.Printf("\r🌍 国家查询进度: %d/%d", done, len(uniqueIPs))
+		fmt.Printf("\r🌍 查询进度: %d/%d", done, len(uniqueIPs))
 
 		// Rate limiting: pause between batches (skip after last batch)
 		if end < len(uniqueIPs) {
@@ -98,7 +123,7 @@ func queryBatch(ctx context.Context, ips []string) ([]ipAPIResponse, error) {
 	for i, ip := range ips {
 		reqBody[i] = batchRequest{
 			Query:  ip,
-			Fields: "query,status,country,countryCode",
+			Fields: fields,
 		}
 	}
 
