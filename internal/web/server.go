@@ -34,6 +34,7 @@ type Config struct {
 type Server struct {
 	cfg   Config
 	store *store.Store
+	ctx   context.Context
 }
 
 func NewServer(cfg Config) *Server {
@@ -45,6 +46,7 @@ func NewServer(cfg Config) *Server {
 
 // Start starts the web server and the background scheduler.
 func (s *Server) Start(ctx context.Context) error {
+	s.ctx = ctx
 	mux := http.NewServeMux()
 
 	// API routes
@@ -169,7 +171,7 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go s.runTest(r.Context())
+	go s.runTest(s.ctx)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "started"})
