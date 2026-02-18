@@ -20,7 +20,7 @@ func NewTableWriter() *TableWriter {
 
 func (w *TableWriter) Write(results []model.TestResult) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"#", "IP", "Port", "Country", "Quality", "Scores", "Latency(ms)", "Status"})
+	table.SetHeader([]string{"#", "IP", "Port", "Country", "Quality", "Scores", "Apple", "Latency(ms)", "Status"})
 	table.SetBorder(true)
 	table.SetAutoWrapText(false)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -83,6 +83,7 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 			country,
 			qualityStr,
 			formatScores(r.Proxy.Scores, green, yellow, red),
+			formatApple(r.Proxy.AppleBanned, green, red),
 			latencyStr,
 			status,
 		})
@@ -121,4 +122,14 @@ func colorScore(v *int, green, yellow, red func(a ...interface{}) string) string
 	default:
 		return red(s)
 	}
+}
+
+func formatApple(banned *bool, green, red func(a ...interface{}) string) string {
+	if banned == nil {
+		return "-"
+	}
+	if *banned {
+		return red("封禁")
+	}
+	return green("正常")
 }

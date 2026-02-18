@@ -21,6 +21,8 @@ type Proxy struct {
 	Quality   string `json:"quality,omitempty"` // "residential", "mobile", "datacenter", "proxy"
 	// External IP scoring (from IPQualityScore, Scamalytics, AbuseIPDB)
 	Scores IPScores `json:"scores,omitempty"`
+	// Apple ban detection (nil = not checked, true = banned, false = ok)
+	AppleBanned *bool `json:"apple_banned,omitempty"`
 }
 
 // IPScores holds fraud/abuse scores from external IP scoring APIs.
