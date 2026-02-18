@@ -59,7 +59,7 @@ func CheckAppleBan(ctx context.Context, proxies model.ProxyList, timeout time.Du
 	// Results
 	type result struct {
 		ip     string
-		banned bool
+		banned *bool
 	}
 	results := make(chan result, total)
 
@@ -97,7 +97,7 @@ func CheckAppleBan(ctx context.Context, proxies model.ProxyList, timeout time.Du
 	}()
 
 	// Collect results
-	banMap := make(map[string]bool, total)
+	banMap := make(map[string]*bool, total)
 	for r := range results {
 		banMap[r.ip] = r.banned
 	}
@@ -105,35 +105,42 @@ func CheckAppleBan(ctx context.Context, proxies model.ProxyList, timeout time.Du
 
 	// Apply results to all proxies sharing each IP
 	for ip, banned := range banMap {
-		b := banned
 		for _, idx := range ipIndex[ip] {
-			proxies[idx].AppleBanned = &b
+			proxies[idx].AppleBanned = banned
 		}
 	}
 
 	bannedCount := 0
+	unknownCount := 0
 	for _, b := range banMap {
-		if b {
+		if b == nil {
+			unknownCount++
+		} else if *b {
 			bannedCount++
 		}
 	}
-	slog.Info("apple ban check completed", "total", total, "banned", bannedCount, "ok", total-bannedCount)
+	slog.Info("apple ban check completed", "total", total, "banned", bannedCount, "ok", total-bannedCount-unknownCount, "unknown", unknownCount)
 }
 
+func boolPtr(b bool) *bool { return &b }
+
 // checkOne checks if a single proxy's IP is banned by Apple.
-// Returns true if banned, false otherwise.
-func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) bool {
+// Returns &true if banned, &false if confirmed OK, nil if unknown (error/timeout).
+func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) *bool {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	dialer, err := proxy.SOCKS5("tcp", p.Address(), nil, proxy.Direct)
 	if err != nil {
 		slog.Debug("apple check: socks5 dial failed", "proxy", p.Address(), "error", err)
-		return false // connection error ≠ Apple ban
+		return nil // connection error → unknown
 	}
 
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if cd, ok := dialer.(proxy.ContextDialer); ok {
+				return cd.DialContext(ctx, network, addr)
+			}
 			return dialer.Dial(network, addr)
 		},
 		DisableKeepAlives: true,
@@ -148,32 +155,33 @@ func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) bool {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, appleURL, nil)
 	if err != nil {
-		return false
+		return nil
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
 		slog.Debug("apple check: request failed", "proxy", p.Address(), "error", err)
-		return false // timeout/connection error ≠ Apple ban
+		return nil // timeout/connection error → unknown
 	}
 	defer resp.Body.Close()
 
 	// Layer 1: status code check
 	if resp.StatusCode == 403 || resp.StatusCode == 503 {
-		return true
+		return boolPtr(true)
 	}
 
 	// Layer 2: body content check (for 200 responses that mask a 403)
 	if resp.StatusCode == 200 {
 		body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024)) // read up to 64KB
 		if err != nil {
-			return false
+			return nil
 		}
 		content := string(body)
 		if strings.Contains(content, "<center><h1>") && strings.Contains(content, "403 Forbidden") {
-			return true
+			return boolPtr(true)
 		}
+		return boolPtr(false) // 200 with normal page → confirmed not banned
 	}
 
-	return false
+	return nil // other status codes → unknown
 }
