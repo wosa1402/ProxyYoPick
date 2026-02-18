@@ -19,7 +19,7 @@ func NewTableWriter() *TableWriter {
 
 func (w *TableWriter) Write(results []model.TestResult) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"#", "IP", "Port", "Protocol", "Latency(ms)", "Status"})
+	table.SetHeader([]string{"#", "IP", "Port", "Country", "Latency(ms)", "Status"})
 	table.SetBorder(true)
 	table.SetAutoWrapText(false)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -31,7 +31,6 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 	successCount := 0
 	for i, r := range results {
 		var status, latencyStr string
-		var colors []tablewriter.Colors
 
 		if r.Success {
 			successCount++
@@ -56,12 +55,16 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 			}
 		}
 
-		_ = colors // tablewriter color is per-cell, we use fatih/color inline instead
+		country := r.Proxy.Country
+		if r.Proxy.CountryCode != "" {
+			country = r.Proxy.CountryCode
+		}
+
 		table.Append([]string{
 			strconv.Itoa(i + 1),
 			r.Proxy.IP,
 			strconv.Itoa(r.Proxy.Port),
-			r.Proxy.Protocol,
+			country,
 			latencyStr,
 			status,
 		})

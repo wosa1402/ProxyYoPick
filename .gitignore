@@ -3,7 +3,7 @@ proxyyopick
 *.exe
 
 # Output
-output/
+/output/
 
 # IDE & tools
 .mcp.json

@@ -7,10 +7,12 @@ import (
 
 // Proxy represents a single SOCKS5 proxy endpoint.
 type Proxy struct {
-	IP       string `json:"ip"`
-	Port     int    `json:"port"`
-	Protocol string `json:"protocol,omitempty"`
-	Location string `json:"location,omitempty"`
+	IP          string `json:"ip"`
+	Port        int    `json:"port"`
+	Protocol    string `json:"protocol,omitempty"`
+	Location    string `json:"location,omitempty"`
+	Country     string `json:"country,omitempty"`
+	CountryCode string `json:"country_code,omitempty"`
 }
 
 // Address returns the "ip:port" string.

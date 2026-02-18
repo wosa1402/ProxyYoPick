@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/efan/proxyyopick/internal/geo"
 	"github.com/efan/proxyyopick/internal/model"
 	"github.com/efan/proxyyopick/internal/output"
 	"github.com/efan/proxyyopick/internal/source"
@@ -60,6 +61,16 @@ func testAndOutput(ctx context.Context, proxies model.ProxyList) error {
 
 	// Sort results
 	results = tester.SortByLatency(results)
+
+	// Lookup countries for tested proxies
+	proxyPtrs := make(model.ProxyList, len(results))
+	for i := range results {
+		proxyPtrs[i] = results[i].Proxy
+	}
+	geo.LookupCountries(ctx, proxyPtrs)
+	for i := range results {
+		results[i].Proxy = proxyPtrs[i]
+	}
 
 	// Output
 	return writeResults(results)
