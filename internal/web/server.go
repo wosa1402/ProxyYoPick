@@ -109,8 +109,8 @@ func (s *Server) scheduler(ctx context.Context) {
 }
 
 // runPoolTest scrapes and tests proxies for the auto pool.
-// For the auto pool: merges scraped proxies into accumulated pool, revives dead ones,
-// tests only live proxies, and updates health (3 consecutive failures = dead).
+// Merges scraped proxies into accumulated pool, revives dead ones from scrape,
+// tests live + dead-eligible-for-retest proxies, updates health tracking.
 func (s *Server) runPoolTest(ctx context.Context, pool store.PoolName) {
 	if s.store.IsRunning(pool) {
 		slog.Info("test already running, skipping", "pool", pool)
@@ -138,14 +138,14 @@ func (s *Server) runPoolTest(ctx context.Context, pool store.PoolName) {
 	added, revived := s.store.MergeAndRevive(pool, proxies)
 	slog.Info("proxies merged", "pool", pool, "scraped", len(proxies), "new", added, "revived", revived)
 
-	// Test only live (non-dead) proxies
-	liveProxies := s.store.GetLiveProxies(pool)
-	slog.Info("testing live proxies", "pool", pool, "live", len(liveProxies))
+	// Get testable proxies: live + dead eligible for daily retest
+	testable := s.store.GetTestableProxies(pool)
+	slog.Info("testing proxies", "pool", pool, "testable", len(testable))
 
-	results := s.testProxies(ctx, liveProxies)
+	results := s.testProxies(ctx, testable)
 
-	// Update health: 3 consecutive failures = dead
-	s.store.UpdateHealth(pool, results, 3)
+	// Update health: 10 consecutive fails = dead; dead retest 3 fails/day = skip
+	s.store.UpdateHealth(pool, results)
 
 	s.store.SetResults(pool, results)
 	stats := s.store.GetStats(pool)

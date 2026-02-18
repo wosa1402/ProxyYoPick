@@ -17,11 +17,13 @@ const (
 
 // ProxyHealth tracks the health state of a single proxy across test cycles.
 type ProxyHealth struct {
-	ConsecFails int       // consecutive failure count
-	Dead        bool      // true = moved to failed pool, skip testing
-	FirstSeen   time.Time // when this proxy was first discovered
-	LastSeen    time.Time // last time it appeared in a scrape
-	LastTested  time.Time // last time it was tested
+	ConsecFails    int       // consecutive failure count (10 = dead)
+	Dead           bool      // true = moved to failed pool
+	FirstSeen      time.Time // when this proxy was first discovered
+	LastSeen       time.Time // last time it appeared in a scrape
+	LastTested     time.Time // last time it was tested
+	RetestDate     string    // "2006-01-02": which day the last dead-retest was on
+	RetestFails    int       // failures during today's dead-retest (3 = skip rest of day)
 }
 
 // pool holds results and state for a single proxy pool.
@@ -225,6 +227,8 @@ func (s *Store) MergeAndRevive(name PoolName, scraped model.ProxyList) (added, r
 			if h.Dead {
 				h.Dead = false
 				h.ConsecFails = 0
+				h.RetestFails = 0
+				h.RetestDate = ""
 				revived++
 			}
 		} else {
@@ -244,30 +248,40 @@ func (s *Store) MergeAndRevive(name PoolName, scraped model.ProxyList) (added, r
 	return added, revived
 }
 
-// GetLiveProxies returns all non-dead proxies from the accumulated pool.
-func (s *Store) GetLiveProxies(name PoolName) model.ProxyList {
+// GetTestableProxies returns proxies that should be tested this cycle:
+// - All live (non-dead) proxies
+// - Dead proxies eligible for daily retest (not yet failed 3 times today)
+func (s *Store) GetTestableProxies(name PoolName) model.ProxyList {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	p := s.getPool(name)
+	today := time.Now().Format("2006-01-02")
 
-	var live model.ProxyList
+	var out model.ProxyList
 	for _, proxy := range p.proxies {
 		h := p.health[proxy.Key()]
 		if h == nil || !h.Dead {
-			live = append(live, proxy)
+			// Live proxy — always test
+			out = append(out, proxy)
+		} else {
+			// Dead proxy — test if today's retest quota not exhausted
+			if h.RetestDate != today || h.RetestFails < 3 {
+				out = append(out, proxy)
+			}
 		}
 	}
-	return live
+	return out
 }
 
 // UpdateHealth updates proxy health based on test results.
-// Success resets ConsecFails; failure increments it.
-// Proxies reaching maxFails consecutive failures are marked dead.
-func (s *Store) UpdateHealth(name PoolName, results []model.TestResult, maxFails int) {
+// Live proxies: 10 consecutive failures → dead.
+// Dead proxies being retested: success → revive; failure → increment daily retest counter.
+func (s *Store) UpdateHealth(name PoolName, results []model.TestResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := s.getPool(name)
 	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	if p.health == nil {
 		p.health = make(map[string]*ProxyHealth)
@@ -282,13 +296,34 @@ func (s *Store) UpdateHealth(name PoolName, results []model.TestResult, maxFails
 		}
 		h.LastTested = now
 
-		if r.Success {
-			h.ConsecFails = 0
-			h.Dead = false
+		if h.Dead {
+			// Dead proxy being retested
+			if r.Success {
+				// Revive
+				h.Dead = false
+				h.ConsecFails = 0
+				h.RetestFails = 0
+				h.RetestDate = ""
+			} else {
+				// Track daily retest failures
+				if h.RetestDate != today {
+					h.RetestDate = today
+					h.RetestFails = 1
+				} else {
+					h.RetestFails++
+				}
+			}
 		} else {
-			h.ConsecFails++
-			if h.ConsecFails >= maxFails {
-				h.Dead = true
+			// Live proxy
+			if r.Success {
+				h.ConsecFails = 0
+			} else {
+				h.ConsecFails++
+				if h.ConsecFails >= 10 {
+					h.Dead = true
+					h.RetestFails = 0
+					h.RetestDate = ""
+				}
 			}
 		}
 	}
