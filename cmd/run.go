@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/efan/proxyyopick/internal/appleban"
 	"github.com/efan/proxyyopick/internal/geo"
 	"github.com/efan/proxyyopick/internal/model"
 	"github.com/efan/proxyyopick/internal/output"
@@ -79,7 +78,6 @@ func testAndOutput(ctx context.Context, proxies model.ProxyList) error {
 		}
 	}
 	scoring.ScoreProxies(ctx, successList, resolveScoreCfg())
-	appleban.CheckAppleBan(ctx, successList, timeout)
 	si := 0
 	for i := range results {
 		if results[i].Success {

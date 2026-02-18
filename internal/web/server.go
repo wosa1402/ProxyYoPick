@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/efan/proxyyopick/internal/appleban"
 	"github.com/efan/proxyyopick/internal/geo"
 	"github.com/efan/proxyyopick/internal/model"
 	"github.com/efan/proxyyopick/internal/scoring"
@@ -192,7 +191,6 @@ func (s *Server) testProxies(ctx context.Context, proxies model.ProxyList) []mod
 		}
 	}
 	scoring.ScoreProxies(ctx, successList, s.cfg.ScoreCfg)
-	appleban.CheckAppleBan(ctx, successList, s.cfg.Timeout)
 	si := 0
 	for i := range results {
 		if results[i].Success {

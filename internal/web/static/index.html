@@ -202,11 +202,6 @@
                     <option value="suspicious">可疑 (31-60)</option>
                     <option value="risky">高风险 (61+)</option>
                 </select>
-                <select id="filterAppleAuto" onchange="renderTable('auto')">
-                    <option value="all">Apple 全部</option>
-                    <option value="ok">Apple 正常</option>
-                    <option value="banned">Apple 封禁</option>
-                </select>
                 <input type="text" id="filterIPAuto" placeholder="搜索 IP..." oninput="renderTable('auto')">
             </div>
             <div class="table-wrapper">
@@ -262,11 +257,6 @@
                     <option value="clean">清洁 (0-30)</option>
                     <option value="suspicious">可疑 (31-60)</option>
                     <option value="risky">高风险 (61+)</option>
-                </select>
-                <select id="filterAppleManual" onchange="renderTable('manual')">
-                    <option value="all">Apple 全部</option>
-                    <option value="ok">Apple 正常</option>
-                    <option value="banned">Apple 封禁</option>
                 </select>
                 <input type="text" id="filterIPManual" placeholder="搜索 IP..." oninput="renderTable('manual')">
             </div>
@@ -396,7 +386,6 @@ function renderTable(pool) {
     const ipFilter = document.getElementById('filterIP' + cap(pool)).value.toLowerCase();
     const qualityFilter = document.getElementById('filterQuality' + cap(pool)).value;
     const scoreFilter = document.getElementById('filterScore' + cap(pool)).value;
-    const appleFilter = document.getElementById('filterApple' + cap(pool)).value;
 
     // Update country filter options
     const countrySel = document.getElementById('filterCountry' + cap(pool));
@@ -424,11 +413,6 @@ function renderTable(pool) {
             if (scoreFilter === 'suspicious' && (maxS <= 30 || maxS > 60)) return false;
             if (scoreFilter === 'risky' && maxS <= 60) return false;
         }
-        if (appleFilter !== 'all') {
-            const ab = r.proxy.apple_banned;
-            if (appleFilter === 'ok' && ab !== false) return false;
-            if (appleFilter === 'banned' && ab !== true) return false;
-        }
         return true;
     });
 
@@ -448,10 +432,6 @@ function renderTable(pool) {
             case 'score':
                 va = Math.max(a.proxy.scores?.ipqs ?? -1, a.proxy.scores?.scamalytics ?? -1, a.proxy.scores?.abuseipdb ?? -1);
                 vb = Math.max(b.proxy.scores?.ipqs ?? -1, b.proxy.scores?.scamalytics ?? -1, b.proxy.scores?.abuseipdb ?? -1);
-                break;
-            case 'apple':
-                va = a.proxy.apple_banned === true ? 1 : a.proxy.apple_banned === false ? 0 : 2;
-                vb = b.proxy.apple_banned === true ? 1 : b.proxy.apple_banned === false ? 0 : 2;
                 break;
             default: va = 0; vb = 0;
         }
@@ -475,7 +455,6 @@ function renderTable(pool) {
         <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
         <th onclick="setSort('quality')">质量<span class="sort-arrow">${arrow('quality')}</span></th>
         <th onclick="setSort('score')">评分<span class="sort-arrow">${arrow('score')}</span></th>
-        <th onclick="setSort('apple')">Apple<span class="sort-arrow">${arrow('apple')}</span></th>
         <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
         <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
         <th>操作</th>
@@ -500,7 +479,6 @@ function renderTable(pool) {
         const [qLabel, qClass] = qMap[r.proxy.quality] || ['-',''];
         const qualityBadge = qClass ? `<span class="badge ${qClass}" title="${r.proxy.isp || ''}">${qLabel}</span>` : '-';
         const scoreCell = renderScoreCell(r.proxy.scores);
-        const appleCell = renderAppleCell(r.proxy.apple_banned);
 
         html += `<tr>
             <td>${i + 1}</td>
@@ -509,7 +487,6 @@ function renderTable(pool) {
             <td>${countryDisplay}</td>
             <td>${qualityBadge}</td>
             <td>${scoreCell}</td>
-            <td>${appleCell}</td>
             <td class="mono">${latency}</td>
             <td>${statusBadge}</td>
             <td><button class="copy-btn" onclick="copyAddr(this, '${addr}')">复制</button></td>
@@ -534,13 +511,6 @@ function renderScoreCell(scores) {
         return `<span class="score-pill ${cls}" title="${v.label === 'Q' ? 'IPQS' : v.label === 'S' ? 'Scamalytics' : 'AbuseIPDB'}: ${v.val}">${v.label}:${v.val}</span>`;
     });
     return parts.length > 0 ? parts.join(' ') : '-';
-}
-
-function renderAppleCell(banned) {
-    if (banned === null || banned === undefined) return '-';
-    return banned
-        ? '<span class="badge badge-fail">封禁</span>'
-        : '<span class="badge badge-ok">正常</span>';
 }
 
 function setSort(key) {
