@@ -157,6 +157,7 @@ func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) *bool {
 	if err != nil {
 		return nil
 	}
+	req.Header.Set("User-Agent", "curl/8.7.1")
 
 	resp, err := client.Do(req)
 	if err != nil {
