@@ -23,6 +23,6 @@ func Default() Config {
 		TargetURL:     "http://www.google.com/generate_204",
 		OutputDir:     "./output",
 		OutputFormats: []string{"table"},
-		Interval:      30 * time.Minute,
+		Interval:      10 * time.Minute,
 	}
 }

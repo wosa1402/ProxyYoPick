@@ -23,7 +23,7 @@ var webCmd = &cobra.Command{
 
 func init() {
 	webCmd.Flags().StringVar(&webAddr, "addr", ":8080", "Web 服务监听地址")
-	webCmd.Flags().DurationVar(&webInterval, "interval", 30*time.Minute, "定时优选间隔")
+	webCmd.Flags().DurationVar(&webInterval, "interval", 10*time.Minute, "定时优选间隔")
 	webCmd.Flags().StringVar(&scrapeURL, "url", "https://socks5-proxy.github.io/", "抓取代理的 URL")
 	rootCmd.AddCommand(webCmd)
 }
