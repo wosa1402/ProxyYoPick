@@ -29,6 +29,7 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 	red := color.New(color.FgRed).SprintFunc()
 
 	cyan := color.New(color.FgCyan).SprintFunc()
+	successCount := 0
 	for i, r := range results {
 		var status, latencyStr string
 
