@@ -20,49 +20,49 @@
             align-items: center;
             justify-content: space-between;
         }
-        .header h1 {
-            font-size: 1.4rem;
-            color: #38bdf8;
-            font-weight: 700;
-        }
+        .header h1 { font-size: 1.4rem; color: #38bdf8; font-weight: 700; }
         .header h1 span { color: #94a3b8; font-weight: 400; font-size: 0.9rem; margin-left: 0.5rem; }
         .header-actions { display: flex; gap: 0.75rem; align-items: center; }
-        .status-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-weight: 600;
-        }
+        .status-badge { font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; }
         .status-idle { background: #1e3a5f; color: #38bdf8; }
         .status-running { background: #3b2f12; color: #fbbf24; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .btn {
-            padding: 0.5rem 1.25rem;
-            border: none;
-            border-radius: 0.5rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
+            padding: 0.5rem 1.25rem; border: none; border-radius: 0.5rem;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
         }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+        .btn-secondary { background: #334155; color: #e2e8f0; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-success { background: #059669; color: white; }
+        .btn-success:hover { background: #047857; }
+        .btn-success:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
 
         .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
 
+        /* Tabs */
+        .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #1e293b; }
+        .tab {
+            padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+            color: #94a3b8; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+        }
+        .tab:hover { color: #e2e8f0; }
+        .tab.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+        .tab .count {
+            background: #334155; color: #94a3b8; font-size: 0.7rem;
+            padding: 0.1rem 0.4rem; border-radius: 9999px; margin-left: 0.4rem;
+        }
+        .tab.active .count { background: #1e3a5f; color: #38bdf8; }
+
         /* Stats cards */
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
         }
         .stat-card {
-            background: #1e293b;
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            border: 1px solid #334155;
+            background: #1e293b; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #334155;
         }
         .stat-card .label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.25rem; }
         .stat-card .value { font-size: 1.8rem; font-weight: 700; }
@@ -71,90 +71,78 @@
         .stat-card .value.blue { color: #38bdf8; }
         .stat-card .value.yellow { color: #fbbf24; }
 
+        /* Import section */
+        .import-section {
+            background: #1e293b; border-radius: 0.75rem; padding: 1.25rem;
+            border: 1px solid #334155; margin-bottom: 1.5rem;
+        }
+        .import-section h3 { font-size: 0.95rem; color: #e2e8f0; margin-bottom: 0.75rem; }
+        .import-row { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+        .import-textarea {
+            flex: 1; min-width: 300px; min-height: 120px; max-height: 300px;
+            background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+            border-radius: 0.5rem; padding: 0.75rem; font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem; resize: vertical;
+        }
+        .import-textarea:focus { outline: none; border-color: #38bdf8; }
+        .import-textarea::placeholder { color: #475569; }
+        .import-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+        .file-label {
+            display: inline-block; padding: 0.5rem 1rem; background: #334155; color: #e2e8f0;
+            border-radius: 0.5rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+            text-align: center; transition: all 0.2s;
+        }
+        .file-label:hover { background: #475569; }
+        .file-input { display: none; }
+        .import-hint { font-size: 0.75rem; color: #64748b; margin-top: 0.5rem; }
+        .import-msg { font-size: 0.8rem; margin-top: 0.5rem; padding: 0.4rem 0.75rem; border-radius: 0.25rem; }
+        .import-msg.success { background: #052e16; color: #4ade80; }
+        .import-msg.error { background: #450a0a; color: #f87171; }
+
         /* Table */
         .table-wrapper {
-            background: #1e293b;
-            border-radius: 0.75rem;
-            border: 1px solid #334155;
-            overflow: hidden;
+            background: #1e293b; border-radius: 0.75rem; border: 1px solid #334155; overflow: hidden;
         }
         .table-header {
-            padding: 1rem 1.25rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
+            padding: 1rem 1.25rem; display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid #334155;
         }
         .table-header h2 { font-size: 1rem; color: #e2e8f0; }
         .table-header .meta { font-size: 0.8rem; color: #64748b; }
         table { width: 100%; border-collapse: collapse; }
         th {
-            background: #0f172a;
-            padding: 0.75rem 1rem;
-            text-align: left;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #94a3b8;
-            font-weight: 600;
-            cursor: pointer;
-            user-select: none;
-            white-space: nowrap;
+            background: #0f172a; padding: 0.75rem 1rem; text-align: left;
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: #94a3b8; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap;
         }
         th:hover { color: #38bdf8; }
         th .sort-arrow { margin-left: 0.25rem; font-size: 0.65rem; }
-        td {
-            padding: 0.65rem 1rem;
-            border-top: 1px solid #1e293b;
-            font-size: 0.85rem;
-        }
+        td { padding: 0.65rem 1rem; border-top: 1px solid #1e293b; font-size: 0.85rem; }
         tr:hover td { background: #334155; }
         .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
-        .badge {
-            display: inline-block;
-            padding: 0.15rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
+        .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
         .badge-ok { background: #052e16; color: #4ade80; }
         .badge-slow { background: #3b2f12; color: #fbbf24; }
         .badge-fail { background: #450a0a; color: #f87171; }
-        .country-flag { margin-right: 0.25rem; }
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #64748b;
-        }
+        .empty-state { text-align: center; padding: 4rem 2rem; color: #64748b; }
         .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
         .copy-btn {
-            background: none;
-            border: 1px solid #475569;
-            color: #94a3b8;
-            padding: 0.2rem 0.5rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.7rem;
+            background: none; border: 1px solid #475569; color: #94a3b8;
+            padding: 0.2rem 0.5rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.7rem;
         }
         .copy-btn:hover { border-color: #38bdf8; color: #38bdf8; }
         .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
 
         /* Filter bar */
-        .filter-bar {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
+        .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
         .filter-bar select, .filter-bar input {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #e2e8f0;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 0.85rem;
+            background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+            padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem;
         }
         .filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: #38bdf8; }
+
+        .pool-panel { display: none; }
+        .pool-panel.active { display: block; }
     </style>
 </head>
 <body>
@@ -167,117 +155,184 @@
     </div>
 
     <div class="container">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">总代理数</div>
-                <div class="value blue" id="statTotal">-</div>
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchPool('auto')" id="tabAuto">
+                自动爬取 <span class="count" id="tabAutoCount">0</span>
             </div>
-            <div class="stat-card">
-                <div class="label">可用</div>
-                <div class="value green" id="statSuccess">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">失败</div>
-                <div class="value red" id="statFail">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">最快延迟</div>
-                <div class="value yellow" id="statFastest">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">平均延迟</div>
-                <div class="value yellow" id="statAvg">-</div>
+            <div class="tab" onclick="switchPool('manual')" id="tabManual">
+                手动导入 <span class="count" id="tabManualCount">0</span>
             </div>
         </div>
 
-        <div class="filter-bar">
-            <select id="filterStatus" onchange="renderTable()">
-                <option value="all">全部状态</option>
-                <option value="ok">仅可用</option>
-                <option value="fail">仅失败</option>
-            </select>
-            <select id="filterCountry" onchange="renderTable()">
-                <option value="all">全部国家</option>
-            </select>
-            <input type="text" id="filterIP" placeholder="搜索 IP..." oninput="renderTable()">
+        <!-- Auto Pool -->
+        <div class="pool-panel active" id="panelAuto">
+            <div class="stats-grid" id="statsAuto"></div>
+            <div class="filter-bar">
+                <select id="filterStatusAuto" onchange="renderTable('auto')">
+                    <option value="all">全部状态</option>
+                    <option value="ok">仅可用</option>
+                    <option value="fail">仅失败</option>
+                </select>
+                <select id="filterCountryAuto" onchange="renderTable('auto')">
+                    <option value="all">全部国家</option>
+                </select>
+                <input type="text" id="filterIPAuto" placeholder="搜索 IP..." oninput="renderTable('auto')">
+            </div>
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <h2>自动爬取代理</h2>
+                    <div class="meta" id="updateTimeAuto">等待首次测试...</div>
+                </div>
+                <div id="tableBodyAuto">
+                    <div class="empty-state"><div class="icon">&#9881;</div><div>正在等待首次优选测试...</div></div>
+                </div>
+            </div>
         </div>
 
-        <div class="table-wrapper">
-            <div class="table-header">
-                <h2>代理列表</h2>
-                <div class="meta" id="updateTime">等待首次测试...</div>
+        <!-- Manual Pool -->
+        <div class="pool-panel" id="panelManual">
+            <div class="import-section">
+                <h3>导入代理</h3>
+                <div class="import-row">
+                    <textarea class="import-textarea" id="importText"
+                        placeholder="输入代理列表，每行一个，格式: ip:port&#10;例如:&#10;1.2.3.4:1080&#10;5.6.7.8:8080&#10;socks5://9.10.11.12:1080"></textarea>
+                    <div class="import-actions">
+                        <label class="file-label" id="fileLabel">
+                            选择 TXT 文件
+                            <input type="file" class="file-input" id="fileInput" accept=".txt,.csv,.text" onchange="handleFileSelect(event)">
+                        </label>
+                        <button class="btn btn-success" id="importBtn" onclick="submitImport()">导入并测试</button>
+                        <div class="import-hint">支持 txt 文件上传或直接粘贴<br>格式: ip:port 每行一个</div>
+                    </div>
+                </div>
+                <div id="importMsg"></div>
             </div>
-            <div id="tableBody">
-                <div class="empty-state">
-                    <div class="icon">&#9881;</div>
-                    <div>正在等待首次优选测试...</div>
+
+            <div class="stats-grid" id="statsManual"></div>
+            <div class="filter-bar">
+                <select id="filterStatusManual" onchange="renderTable('manual')">
+                    <option value="all">全部状态</option>
+                    <option value="ok">仅可用</option>
+                    <option value="fail">仅失败</option>
+                </select>
+                <select id="filterCountryManual" onchange="renderTable('manual')">
+                    <option value="all">全部国家</option>
+                </select>
+                <input type="text" id="filterIPManual" placeholder="搜索 IP..." oninput="renderTable('manual')">
+            </div>
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <h2>手动导入代理</h2>
+                    <div class="meta" id="updateTimeManual">尚未导入</div>
+                </div>
+                <div id="tableBodyManual">
+                    <div class="empty-state"><div class="icon">&#128230;</div><div>请在上方导入代理列表</div></div>
                 </div>
             </div>
         </div>
     </div>
 
 <script>
-let allResults = [];
+const state = {
+    auto: { results: [], stats: {} },
+    manual: { results: [], stats: {} },
+};
+let currentPool = 'auto';
 let sortKey = 'latency_ms';
 let sortAsc = true;
 
-async function fetchStats() {
+// -- Tab switching --
+function switchPool(pool) {
+    currentPool = pool;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pool-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab' + cap(pool)).classList.add('active');
+    document.getElementById('panel' + cap(pool)).classList.add('active');
+    updateHeaderStatus();
+}
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// -- Data fetching --
+async function fetchPool(pool) {
     try {
-        const resp = await fetch('/api/stats');
-        const stats = await resp.json();
-        document.getElementById('statTotal').textContent = stats.total || '-';
-        document.getElementById('statSuccess').textContent = stats.success || '-';
-        document.getElementById('statFail').textContent = stats.fail || '-';
-        document.getElementById('statFastest').textContent = stats.fastest_ms ? stats.fastest_ms + ' ms' : '-';
-        document.getElementById('statAvg').textContent = stats.avg_ms ? stats.avg_ms + ' ms' : '-';
-
-        const badge = document.getElementById('statusBadge');
-        const btn = document.getElementById('triggerBtn');
-        if (stats.running) {
-            badge.className = 'status-badge status-running';
-            badge.textContent = '测试中...';
-            btn.disabled = true;
-        } else {
-            badge.className = 'status-badge status-idle';
-            badge.textContent = '空闲';
-            btn.disabled = false;
-        }
-
-        if (stats.updated_at) {
-            document.getElementById('updateTime').textContent = '上次更新: ' + stats.updated_at;
-        }
-    } catch (e) { console.error('fetch stats error', e); }
+        const [statsResp, resultsResp] = await Promise.all([
+            fetch('/api/stats?pool=' + pool),
+            fetch('/api/results?pool=' + pool),
+        ]);
+        state[pool].stats = await statsResp.json();
+        state[pool].results = await resultsResp.json() || [];
+    } catch (e) { console.error('fetch error', pool, e); }
 }
 
-async function fetchResults() {
-    try {
-        const resp = await fetch('/api/results');
-        allResults = await resp.json() || [];
-        updateCountryFilter();
-        renderTable();
-    } catch (e) { console.error('fetch results error', e); }
+async function refreshAll() {
+    await Promise.all([fetchPool('auto'), fetchPool('manual')]);
+    renderStats('auto');
+    renderStats('manual');
+    renderTable('auto');
+    renderTable('manual');
+    updateTabCounts();
+    updateHeaderStatus();
 }
 
-function updateCountryFilter() {
-    const sel = document.getElementById('filterCountry');
-    const current = sel.value;
-    const countries = [...new Set(allResults.map(r => r.proxy.country_code).filter(Boolean))].sort();
-    sel.innerHTML = '<option value="all">全部国家</option>';
+function updateHeaderStatus() {
+    const stats = state[currentPool].stats;
+    const badge = document.getElementById('statusBadge');
+    const btn = document.getElementById('triggerBtn');
+    if (stats.running) {
+        badge.className = 'status-badge status-running';
+        badge.textContent = '测试中...';
+        btn.disabled = true;
+    } else {
+        badge.className = 'status-badge status-idle';
+        badge.textContent = '空闲';
+        btn.disabled = false;
+    }
+    // Also disable import button if manual is running
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn) importBtn.disabled = state.manual.stats.running || false;
+}
+
+function updateTabCounts() {
+    document.getElementById('tabAutoCount').textContent = state.auto.stats.total || 0;
+    document.getElementById('tabManualCount').textContent = state.manual.stats.total || 0;
+}
+
+// -- Stats rendering --
+function renderStats(pool) {
+    const s = state[pool].stats;
+    const el = document.getElementById('stats' + cap(pool));
+    el.innerHTML = `
+        <div class="stat-card"><div class="label">总代理数</div><div class="value blue">${s.total || '-'}</div></div>
+        <div class="stat-card"><div class="label">可用</div><div class="value green">${s.success || '-'}</div></div>
+        <div class="stat-card"><div class="label">失败</div><div class="value red">${s.fail || '-'}</div></div>
+        <div class="stat-card"><div class="label">最快延迟</div><div class="value yellow">${s.fastest_ms ? s.fastest_ms + ' ms' : '-'}</div></div>
+        <div class="stat-card"><div class="label">平均延迟</div><div class="value yellow">${s.avg_ms ? s.avg_ms + ' ms' : '-'}</div></div>
+    `;
+    const timeEl = document.getElementById('updateTime' + cap(pool));
+    if (s.updated_at) timeEl.textContent = '上次更新: ' + s.updated_at;
+}
+
+// -- Table rendering --
+function renderTable(pool) {
+    const results = state[pool].results;
+    const statusFilter = document.getElementById('filterStatus' + cap(pool)).value;
+    const countryFilter = document.getElementById('filterCountry' + cap(pool)).value;
+    const ipFilter = document.getElementById('filterIP' + cap(pool)).value.toLowerCase();
+
+    // Update country filter options
+    const countrySel = document.getElementById('filterCountry' + cap(pool));
+    const currentCountry = countrySel.value;
+    const countries = [...new Set(results.map(r => r.proxy.country_code).filter(Boolean))].sort();
+    countrySel.innerHTML = '<option value="all">全部国家</option>';
     countries.forEach(c => {
         const opt = document.createElement('option');
-        opt.value = c;
-        opt.textContent = c;
-        sel.appendChild(opt);
+        opt.value = c; opt.textContent = c;
+        countrySel.appendChild(opt);
     });
-    sel.value = current;
-}
+    countrySel.value = currentCountry;
 
-function renderTable() {
-    const statusFilter = document.getElementById('filterStatus').value;
-    const countryFilter = document.getElementById('filterCountry').value;
-    const ipFilter = document.getElementById('filterIP').value.toLowerCase();
-
-    let filtered = allResults.filter(r => {
+    let filtered = results.filter(r => {
         if (statusFilter === 'ok' && !r.success) return false;
         if (statusFilter === 'fail' && r.success) return false;
         if (countryFilter !== 'all' && r.proxy.country_code !== countryFilter) return false;
@@ -293,12 +348,8 @@ function renderTable() {
             case 'country': va = a.proxy.country_code || ''; vb = b.proxy.country_code || ''; break;
             case 'latency_ms':
                 va = a.success ? a.latency_ms : 999999;
-                vb = b.success ? b.latency_ms : 999999;
-                break;
-            case 'status':
-                va = a.success ? 0 : 1;
-                vb = b.success ? 0 : 1;
-                break;
+                vb = b.success ? b.latency_ms : 999999; break;
+            case 'status': va = a.success ? 0 : 1; vb = b.success ? 0 : 1; break;
             default: va = 0; vb = 0;
         }
         if (va < vb) return sortAsc ? -1 : 1;
@@ -306,46 +357,39 @@ function renderTable() {
         return 0;
     });
 
+    const tableEl = document.getElementById('tableBody' + cap(pool));
     if (filtered.length === 0) {
-        document.getElementById('tableBody').innerHTML = `
-            <div class="empty-state">
-                <div class="icon">&#128269;</div>
-                <div>暂无数据</div>
-            </div>`;
+        const msg = pool === 'manual' ? '请在上方导入代理列表' : '暂无数据';
+        tableEl.innerHTML = `<div class="empty-state"><div class="icon">&#128269;</div><div>${msg}</div></div>`;
         return;
     }
 
     const arrow = (key) => sortKey === key ? (sortAsc ? ' &#9650;' : ' &#9660;') : '';
-
-    let html = `<table>
-        <thead><tr>
-            <th>#</th>
-            <th onclick="setSort('ip')">IP<span class="sort-arrow">${arrow('ip')}</span></th>
-            <th onclick="setSort('port')">端口<span class="sort-arrow">${arrow('port')}</span></th>
-            <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
-            <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
-            <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
-            <th>操作</th>
-        </tr></thead><tbody>`;
+    let html = `<table><thead><tr>
+        <th>#</th>
+        <th onclick="setSort('ip')">IP<span class="sort-arrow">${arrow('ip')}</span></th>
+        <th onclick="setSort('port')">端口<span class="sort-arrow">${arrow('port')}</span></th>
+        <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
+        <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
+        <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
+        <th>操作</th>
+    </tr></thead><tbody>`;
 
     filtered.forEach((r, i) => {
         const addr = r.proxy.ip + ':' + r.proxy.port;
         let statusBadge, latency;
         if (r.success) {
-            if (r.latency_ms < 1000) {
-                statusBadge = '<span class="badge badge-ok">OK</span>';
-            } else {
-                statusBadge = '<span class="badge badge-slow">SLOW</span>';
-            }
+            statusBadge = r.latency_ms < 1000
+                ? '<span class="badge badge-ok">OK</span>'
+                : '<span class="badge badge-slow">SLOW</span>';
             latency = r.latency_ms;
         } else {
             statusBadge = '<span class="badge badge-fail">FAIL</span>';
             latency = '-';
         }
-
-        const country = r.proxy.country_code || '-';
-        const countryName = r.proxy.country || '';
-        const countryDisplay = country !== '-' ? `<span title="${countryName}">${countryToFlag(country)} ${country}</span>` : '-';
+        const cc = r.proxy.country_code || '-';
+        const cn = r.proxy.country || '';
+        const countryDisplay = cc !== '-' ? `<span title="${cn}">${countryToFlag(cc)} ${cc}</span>` : '-';
 
         html += `<tr>
             <td>${i + 1}</td>
@@ -359,40 +403,88 @@ function renderTable() {
     });
 
     html += '</tbody></table>';
-    document.getElementById('tableBody').innerHTML = html;
+    tableEl.innerHTML = html;
 }
 
 function setSort(key) {
-    if (sortKey === key) { sortAsc = !sortAsc; }
+    if (sortKey === key) sortAsc = !sortAsc;
     else { sortKey = key; sortAsc = true; }
-    renderTable();
+    renderTable('auto');
+    renderTable('manual');
 }
 
 function countryToFlag(code) {
     if (!code || code.length !== 2) return '';
-    const offset = 127397;
-    return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + offset));
+    return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + 127397));
 }
 
+// -- Actions --
 async function triggerTest() {
     try {
         document.getElementById('triggerBtn').disabled = true;
-        await fetch('/api/trigger', { method: 'POST' });
+        await fetch('/api/trigger?pool=' + currentPool, { method: 'POST' });
     } catch (e) { console.error('trigger error', e); }
 }
 
 function copyAddr(btn, addr) {
     navigator.clipboard.writeText(addr).then(() => {
-        btn.textContent = '已复制';
-        btn.classList.add('copied');
+        btn.textContent = '已复制'; btn.classList.add('copied');
         setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
     });
 }
 
-// Auto refresh
-setInterval(() => { fetchStats(); fetchResults(); }, 5000);
-fetchStats();
-fetchResults();
+// -- Import --
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    document.getElementById('fileLabel').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const textarea = document.getElementById('importText');
+        const existing = textarea.value.trim();
+        textarea.value = existing ? existing + '\n' + e.target.result : e.target.result;
+    };
+    reader.readAsText(file);
+}
+
+async function submitImport() {
+    const text = document.getElementById('importText').value.trim();
+    if (!text) {
+        showImportMsg('error', '请输入代理列表或选择文件');
+        return;
+    }
+
+    const importBtn = document.getElementById('importBtn');
+    importBtn.disabled = true;
+
+    try {
+        const form = new FormData();
+        form.append('text', text);
+        const resp = await fetch('/api/import', { method: 'POST', body: form });
+        const data = await resp.json();
+
+        if (data.status === 'started') {
+            showImportMsg('success', `已提交 ${data.count} 个代理，正在测试中...`);
+            switchPool('manual');
+        } else {
+            showImportMsg('error', data.error || '导入失败');
+            importBtn.disabled = false;
+        }
+    } catch (e) {
+        showImportMsg('error', '请求失败: ' + e.message);
+        importBtn.disabled = false;
+    }
+}
+
+function showImportMsg(type, msg) {
+    const el = document.getElementById('importMsg');
+    el.innerHTML = `<div class="import-msg ${type}">${msg}</div>`;
+    setTimeout(() => { el.innerHTML = ''; }, 8000);
+}
+
+// -- Auto refresh --
+setInterval(refreshAll, 5000);
+refreshAll();
 </script>
 </body>
 </html>
