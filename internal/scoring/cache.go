@@ -1,7 +1,6 @@
 package scoring
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
