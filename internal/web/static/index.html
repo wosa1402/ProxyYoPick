@@ -224,7 +224,7 @@
                         placeholder="输入代理列表，每行一个，格式: ip:port&#10;例如:&#10;1.2.3.4:1080&#10;5.6.7.8:8080&#10;socks5://9.10.11.12:1080&#10;&#10;支持拖拽 TXT 文件到此处"></textarea>
                     <div class="import-actions">
                         <label class="file-label" id="fileLabel">
-                            选择 TXT 文件
+                            <span id="fileLabelText">选择 TXT 文件</span>
                             <input type="file" class="file-input" id="fileInput" accept=".txt,.csv,.text" onchange="handleFileSelect(event)">
                         </label>
                         <button class="btn btn-success" id="importBtn" onclick="submitImport()">导入并测试</button>
@@ -544,7 +544,7 @@ function copyAddr(btn, addr) {
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    document.getElementById('fileLabel').textContent = file.name;
+    document.getElementById('fileLabelText').textContent = file.name;
     const reader = new FileReader();
     reader.onload = (e) => {
         const textarea = document.getElementById('importText');
@@ -573,7 +573,7 @@ async function submitImport() {
 
         if (data.status === 'started') {
             textarea.value = '';
-            document.getElementById('fileLabel').textContent = '选择 TXT 文件';
+            document.getElementById('fileLabelText').textContent = '选择 TXT 文件';
             document.getElementById('fileInput').value = '';
             const msg = data.added > 0
                 ? `新增 ${data.added} 个代理，共 ${data.total} 个，正在测试中...`
