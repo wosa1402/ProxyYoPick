@@ -57,6 +57,7 @@ func (f *FileSource) Fetch(_ context.Context) (model.ProxyList, error) {
 }
 
 // parseLine parses a line in "ip:port" or "protocol://ip:port" format.
+// Lines with authentication (ip:port:user:pass) are silently skipped.
 func parseLine(line string) (model.Proxy, bool) {
 	protocol := "socks5"
 
@@ -66,7 +67,11 @@ func parseLine(line string) (model.Proxy, bool) {
 		line = line[idx+3:]
 	}
 
-	parts := strings.SplitN(line, ":", 2)
+	// Skip lines with auth credentials (ip:port:user:pass)
+	parts := strings.Split(line, ":")
+	if len(parts) > 2 {
+		return model.Proxy{}, false
+	}
 	if len(parts) != 2 {
 		return model.Proxy{}, false
 	}
