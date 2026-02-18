@@ -250,12 +250,13 @@ func (s *Store) MergeAndRevive(name PoolName, scraped model.ProxyList) (added, r
 
 // GetTestableProxies returns proxies that should be tested this cycle:
 // - All live (non-dead) proxies
-// - Dead proxies eligible for daily retest (not yet failed 3 times today)
+// - Dead proxies eligible for retest: every 3 hours, max 3 failures per day
 func (s *Store) GetTestableProxies(name PoolName) model.ProxyList {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	p := s.getPool(name)
-	today := time.Now().Format("2006-01-02")
+	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	var out model.ProxyList
 	for _, proxy := range p.proxies {
@@ -264,8 +265,10 @@ func (s *Store) GetTestableProxies(name PoolName) model.ProxyList {
 			// Live proxy — always test
 			out = append(out, proxy)
 		} else {
-			// Dead proxy — test if today's retest quota not exhausted
-			if h.RetestDate != today || h.RetestFails < 3 {
+			// Dead proxy — retest if: quota not exhausted AND 3h since last test
+			quotaOK := h.RetestDate != today || h.RetestFails < 3
+			cooldownOK := h.LastTested.IsZero() || now.Sub(h.LastTested) >= 3*time.Hour
+			if quotaOK && cooldownOK {
 				out = append(out, proxy)
 			}
 		}
