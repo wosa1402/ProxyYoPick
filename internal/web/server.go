@@ -51,6 +51,10 @@ func NewServer(cfg Config) *Server {
 // Start starts the web server and the background scheduler.
 func (s *Server) Start(ctx context.Context) error {
 	s.ctx = ctx
+
+	// Restore pool data from disk
+	s.store.Load("")
+
 	mux := http.NewServeMux()
 
 	// API routes
@@ -81,6 +85,7 @@ func (s *Server) Start(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		srv.Shutdown(shutdownCtx)
+		s.store.Save("") // persist pool data on shutdown
 	}()
 
 	slog.Info("web server starting", "addr", s.cfg.Addr)
@@ -148,6 +153,7 @@ func (s *Server) runPoolTest(ctx context.Context, pool store.PoolName) {
 	s.store.UpdateHealth(pool, results)
 
 	s.store.SetResults(pool, results)
+	s.store.Save("") // persist after auto test cycle
 	stats := s.store.GetStats(pool)
 	slog.Info("proxy test completed", "pool", pool, "tested", len(results),
 		"accumulated", stats.Accumulated, "live", stats.Live, "dead", stats.DeadCount)
@@ -167,6 +173,7 @@ func (s *Server) runManualTest(ctx context.Context, proxies model.ProxyList) {
 
 	results := s.testProxies(ctx, proxies)
 	s.store.SetResults(store.PoolManual, results)
+	s.store.Save("") // persist after manual test
 	slog.Info("manual proxy test completed", "total", len(results))
 }
 
@@ -362,6 +369,7 @@ func (s *Server) handleClearManual(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.store.ClearProxies(store.PoolManual)
+	s.store.Save("") // persist cleared state
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})

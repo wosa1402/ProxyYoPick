@@ -17,13 +17,13 @@ const (
 
 // ProxyHealth tracks the health state of a single proxy across test cycles.
 type ProxyHealth struct {
-	ConsecFails    int       // consecutive failure count (10 = dead)
-	Dead           bool      // true = moved to failed pool
-	FirstSeen      time.Time // when this proxy was first discovered
-	LastSeen       time.Time // last time it appeared in a scrape
-	LastTested     time.Time // last time it was tested
-	RetestDate     string    // "2006-01-02": which day the last dead-retest was on
-	RetestFails    int       // failures during today's dead-retest (3 = skip rest of day)
+	ConsecFails int       `json:"consec_fails"` // consecutive failure count (10 = dead)
+	Dead        bool      `json:"dead"`         // true = moved to failed pool
+	FirstSeen   time.Time `json:"first_seen"`   // when this proxy was first discovered
+	LastSeen    time.Time `json:"last_seen"`     // last time it appeared in a scrape
+	LastTested  time.Time `json:"last_tested"`   // last time it was tested
+	RetestDate  string    `json:"retest_date"`   // "2006-01-02": which day the last dead-retest was on
+	RetestFails int       `json:"retest_fails"`  // failures during today's dead-retest (3 = skip rest of day)
 }
 
 // pool holds results and state for a single proxy pool.
