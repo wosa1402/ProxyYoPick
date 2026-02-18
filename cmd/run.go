@@ -8,6 +8,7 @@ import (
 	"github.com/efan/proxyyopick/internal/geo"
 	"github.com/efan/proxyyopick/internal/model"
 	"github.com/efan/proxyyopick/internal/output"
+	"github.com/efan/proxyyopick/internal/scoring"
 	"github.com/efan/proxyyopick/internal/source"
 	"github.com/efan/proxyyopick/internal/tester"
 	"github.com/spf13/cobra"
@@ -68,6 +69,10 @@ func testAndOutput(ctx context.Context, proxies model.ProxyList) error {
 		proxyPtrs[i] = results[i].Proxy
 	}
 	geo.LookupCountries(ctx, proxyPtrs)
+
+	// IP scoring enrichment
+	scoring.ScoreProxies(ctx, proxyPtrs, resolveScoreCfg())
+
 	for i := range results {
 		results[i].Proxy = proxyPtrs[i]
 	}

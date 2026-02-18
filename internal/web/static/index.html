@@ -128,6 +128,10 @@
         .badge-mob { background: #1e3a5f; color: #38bdf8; }
         .badge-dc { background: #3b2f12; color: #fbbf24; }
         .badge-proxy { background: #450a0a; color: #f87171; }
+        .score-pill { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 0.2rem; font-size: 0.7rem; font-weight: 600; margin: 0 1px; }
+        .score-green { background: #052e16; color: #4ade80; }
+        .score-yellow { background: #3b2f12; color: #fbbf24; }
+        .score-red { background: #450a0a; color: #f87171; }
         .empty-state { text-align: center; padding: 4rem 2rem; color: #64748b; }
         .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
         .copy-btn {
@@ -188,6 +192,12 @@
                     <option value="datacenter">机房 IP</option>
                     <option value="proxy">代理 IP</option>
                 </select>
+                <select id="filterScoreAuto" onchange="renderTable('auto')">
+                    <option value="all">全部评分</option>
+                    <option value="clean">清洁 (0-30)</option>
+                    <option value="suspicious">可疑 (31-60)</option>
+                    <option value="risky">高风险 (61+)</option>
+                </select>
                 <input type="text" id="filterIPAuto" placeholder="搜索 IP..." oninput="renderTable('auto')">
             </div>
             <div class="table-wrapper">
@@ -236,6 +246,12 @@
                     <option value="mobile">移动 IP</option>
                     <option value="datacenter">机房 IP</option>
                     <option value="proxy">代理 IP</option>
+                </select>
+                <select id="filterScoreManual" onchange="renderTable('manual')">
+                    <option value="all">全部评分</option>
+                    <option value="clean">清洁 (0-30)</option>
+                    <option value="suspicious">可疑 (31-60)</option>
+                    <option value="risky">高风险 (61+)</option>
                 </select>
                 <input type="text" id="filterIPManual" placeholder="搜索 IP..." oninput="renderTable('manual')">
             </div>
@@ -355,6 +371,7 @@ function renderTable(pool) {
     const countryFilter = document.getElementById('filterCountry' + cap(pool)).value;
     const ipFilter = document.getElementById('filterIP' + cap(pool)).value.toLowerCase();
     const qualityFilter = document.getElementById('filterQuality' + cap(pool)).value;
+    const scoreFilter = document.getElementById('filterScore' + cap(pool)).value;
 
     // Update country filter options
     const countrySel = document.getElementById('filterCountry' + cap(pool));
@@ -374,6 +391,14 @@ function renderTable(pool) {
         if (countryFilter !== 'all' && r.proxy.country_code !== countryFilter) return false;
         if (ipFilter && !r.proxy.ip.includes(ipFilter)) return false;
         if (qualityFilter !== 'all' && r.proxy.quality !== qualityFilter) return false;
+        if (scoreFilter !== 'all') {
+            const s = r.proxy.scores;
+            const maxS = Math.max(s?.ipqs ?? -1, s?.scamalytics ?? -1, s?.abuseipdb ?? -1);
+            if (maxS < 0) return false;
+            if (scoreFilter === 'clean' && maxS > 30) return false;
+            if (scoreFilter === 'suspicious' && (maxS <= 30 || maxS > 60)) return false;
+            if (scoreFilter === 'risky' && maxS <= 60) return false;
+        }
         return true;
     });
 
@@ -390,6 +415,10 @@ function renderTable(pool) {
                 va = a.success ? a.latency_ms : 999999;
                 vb = b.success ? b.latency_ms : 999999; break;
             case 'status': va = a.success ? 0 : 1; vb = b.success ? 0 : 1; break;
+            case 'score':
+                va = Math.max(a.proxy.scores?.ipqs ?? -1, a.proxy.scores?.scamalytics ?? -1, a.proxy.scores?.abuseipdb ?? -1);
+                vb = Math.max(b.proxy.scores?.ipqs ?? -1, b.proxy.scores?.scamalytics ?? -1, b.proxy.scores?.abuseipdb ?? -1);
+                break;
             default: va = 0; vb = 0;
         }
         if (va < vb) return sortAsc ? -1 : 1;
@@ -411,6 +440,7 @@ function renderTable(pool) {
         <th onclick="setSort('port')">端口<span class="sort-arrow">${arrow('port')}</span></th>
         <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
         <th onclick="setSort('quality')">质量<span class="sort-arrow">${arrow('quality')}</span></th>
+        <th onclick="setSort('score')">评分<span class="sort-arrow">${arrow('score')}</span></th>
         <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
         <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
         <th>操作</th>
@@ -434,6 +464,7 @@ function renderTable(pool) {
         const qMap = {residential: ['住宅','badge-res'], mobile: ['移动','badge-mob'], datacenter: ['机房','badge-dc'], proxy: ['代理','badge-proxy']};
         const [qLabel, qClass] = qMap[r.proxy.quality] || ['-',''];
         const qualityBadge = qClass ? `<span class="badge ${qClass}" title="${r.proxy.isp || ''}">${qLabel}</span>` : '-';
+        const scoreCell = renderScoreCell(r.proxy.scores);
 
         html += `<tr>
             <td>${i + 1}</td>
@@ -441,6 +472,7 @@ function renderTable(pool) {
             <td class="mono">${r.proxy.port}</td>
             <td>${countryDisplay}</td>
             <td>${qualityBadge}</td>
+            <td>${scoreCell}</td>
             <td class="mono">${latency}</td>
             <td>${statusBadge}</td>
             <td><button class="copy-btn" onclick="copyAddr(this, '${addr}')">复制</button></td>
@@ -449,6 +481,22 @@ function renderTable(pool) {
 
     html += '</tbody></table>';
     tableEl.innerHTML = html;
+}
+
+function renderScoreCell(scores) {
+    if (!scores) return '-';
+    const vals = [
+        { label: 'Q', val: scores.ipqs },
+        { label: 'S', val: scores.scamalytics },
+        { label: 'A', val: scores.abuseipdb },
+    ];
+    const parts = vals.filter(v => v.val !== undefined && v.val !== null).map(v => {
+        let cls = 'score-green';
+        if (v.val > 60) cls = 'score-red';
+        else if (v.val > 30) cls = 'score-yellow';
+        return `<span class="score-pill ${cls}" title="${v.label === 'Q' ? 'IPQS' : v.label === 'S' ? 'Scamalytics' : 'AbuseIPDB'}: ${v.val}">${v.label}:${v.val}</span>`;
+    });
+    return parts.length > 0 ? parts.join(' ') : '-';
 }
 
 function setSort(key) {

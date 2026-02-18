@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/efan/proxyyopick/internal/model"
 	"github.com/fatih/color"
@@ -19,7 +20,7 @@ func NewTableWriter() *TableWriter {
 
 func (w *TableWriter) Write(results []model.TestResult) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"#", "IP", "Port", "Country", "Quality", "Latency(ms)", "Status"})
+	table.SetHeader([]string{"#", "IP", "Port", "Country", "Quality", "Scores", "Latency(ms)", "Status"})
 	table.SetBorder(true)
 	table.SetAutoWrapText(false)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -81,6 +82,7 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 			strconv.Itoa(r.Proxy.Port),
 			country,
 			qualityStr,
+			formatScores(r.Proxy.Scores, green, yellow, red),
 			latencyStr,
 			status,
 		})
@@ -91,4 +93,32 @@ func (w *TableWriter) Write(results []model.TestResult) error {
 	fmt.Println()
 
 	return nil
+}
+
+// formatScores formats IPScores as "IPQS/Scam/Abuse" with color coding.
+func formatScores(s model.IPScores, green, yellow, red func(a ...interface{}) string) string {
+	if s.IPQS == nil && s.Scamalytics == nil && s.AbuseIPDB == nil {
+		return "-"
+	}
+	parts := []string{
+		colorScore(s.IPQS, green, yellow, red),
+		colorScore(s.Scamalytics, green, yellow, red),
+		colorScore(s.AbuseIPDB, green, yellow, red),
+	}
+	return strings.Join(parts, "/")
+}
+
+func colorScore(v *int, green, yellow, red func(a ...interface{}) string) string {
+	if v == nil {
+		return "-"
+	}
+	s := strconv.Itoa(*v)
+	switch {
+	case *v <= 30:
+		return green(s)
+	case *v <= 60:
+		return yellow(s)
+	default:
+		return red(s)
+	}
 }

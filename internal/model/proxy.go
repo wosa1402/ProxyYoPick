@@ -19,6 +19,16 @@ type Proxy struct {
 	IsMobile  bool   `json:"is_mobile"`
 	ISP       string `json:"isp,omitempty"`
 	Quality   string `json:"quality,omitempty"` // "residential", "mobile", "datacenter", "proxy"
+	// External IP scoring (from IPQualityScore, Scamalytics, AbuseIPDB)
+	Scores IPScores `json:"scores,omitempty"`
+}
+
+// IPScores holds fraud/abuse scores from external IP scoring APIs.
+// nil values indicate the API was not queried (key not configured).
+type IPScores struct {
+	IPQS        *int `json:"ipqs,omitempty"`        // IPQualityScore fraud_score (0-100)
+	Scamalytics *int `json:"scamalytics,omitempty"` // Scamalytics score (0-100)
+	AbuseIPDB   *int `json:"abuseipdb,omitempty"`   // AbuseIPDB abuseConfidenceScore (0-100)
 }
 
 // Address returns the "ip:port" string.

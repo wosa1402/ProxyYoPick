@@ -39,6 +39,7 @@ func runWeb(cmd *cobra.Command, args []string) error {
 		Timeout:     timeout,
 		TargetURL:   targetURL,
 		Interval:    webInterval,
+		ScoreCfg:    resolveScoreCfg(),
 	})
 
 	return srv.Start(ctx)

@@ -14,3 +14,6 @@ proxyyopick
 # OS
 .DS_Store
 Thumbs.db
+
+# Score cache
+.proxyyopick/

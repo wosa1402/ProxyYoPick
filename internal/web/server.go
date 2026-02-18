@@ -14,6 +14,7 @@ import (
 
 	"github.com/efan/proxyyopick/internal/geo"
 	"github.com/efan/proxyyopick/internal/model"
+	"github.com/efan/proxyyopick/internal/scoring"
 	"github.com/efan/proxyyopick/internal/source"
 	"github.com/efan/proxyyopick/internal/store"
 	"github.com/efan/proxyyopick/internal/tester"
@@ -30,6 +31,7 @@ type Config struct {
 	Timeout     time.Duration
 	TargetURL   string
 	Interval    time.Duration
+	ScoreCfg    scoring.Config
 }
 
 // Server is the web server with integrated scheduler.
@@ -162,6 +164,10 @@ func (s *Server) testProxies(ctx context.Context, proxies model.ProxyList) []mod
 		proxyList[i] = results[i].Proxy
 	}
 	geo.LookupCountries(ctx, proxyList)
+
+	// IP scoring enrichment
+	scoring.ScoreProxies(ctx, proxyList, s.cfg.ScoreCfg)
+
 	for i := range results {
 		results[i].Proxy = proxyList[i]
 	}
