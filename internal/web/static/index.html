@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProxyYoPick - SOCKS5 代理优选</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid #1e293b;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 {
+            font-size: 1.4rem;
+            color: #38bdf8;
+            font-weight: 700;
+        }
+        .header h1 span { color: #94a3b8; font-weight: 400; font-size: 0.9rem; margin-left: 0.5rem; }
+        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+        .status-idle { background: #1e3a5f; color: #38bdf8; }
+        .status-running { background: #3b2f12; color: #fbbf24; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: #1e293b;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            border: 1px solid #334155;
+        }
+        .stat-card .label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.25rem; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; }
+        .stat-card .value.green { color: #4ade80; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .value.blue { color: #38bdf8; }
+        .stat-card .value.yellow { color: #fbbf24; }
+
+        /* Table */
+        .table-wrapper {
+            background: #1e293b;
+            border-radius: 0.75rem;
+            border: 1px solid #334155;
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+        .table-header h2 { font-size: 1rem; color: #e2e8f0; }
+        .table-header .meta { font-size: 0.8rem; color: #64748b; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: #0f172a;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        th:hover { color: #38bdf8; }
+        th .sort-arrow { margin-left: 0.25rem; font-size: 0.65rem; }
+        td {
+            padding: 0.65rem 1rem;
+            border-top: 1px solid #1e293b;
+            font-size: 0.85rem;
+        }
+        tr:hover td { background: #334155; }
+        .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-ok { background: #052e16; color: #4ade80; }
+        .badge-slow { background: #3b2f12; color: #fbbf24; }
+        .badge-fail { background: #450a0a; color: #f87171; }
+        .country-flag { margin-right: 0.25rem; }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .copy-btn {
+            background: none;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .copy-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+        .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .filter-bar select, .filter-bar input {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ProxyYoPick <span>SOCKS5 代理优选</span></h1>
+        <div class="header-actions">
+            <span id="statusBadge" class="status-badge status-idle">空闲</span>
+            <button id="triggerBtn" class="btn btn-primary" onclick="triggerTest()">立即优选</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">总代理数</div>
+                <div class="value blue" id="statTotal">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">可用</div>
+                <div class="value green" id="statSuccess">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">失败</div>
+                <div class="value red" id="statFail">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">最快延迟</div>
+                <div class="value yellow" id="statFastest">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">平均延迟</div>
+                <div class="value yellow" id="statAvg">-</div>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <select id="filterStatus" onchange="renderTable()">
+                <option value="all">全部状态</option>
+                <option value="ok">仅可用</option>
+                <option value="fail">仅失败</option>
+            </select>
+            <select id="filterCountry" onchange="renderTable()">
+                <option value="all">全部国家</option>
+            </select>
+            <input type="text" id="filterIP" placeholder="搜索 IP..." oninput="renderTable()">
+        </div>
+
+        <div class="table-wrapper">
+            <div class="table-header">
+                <h2>代理列表</h2>
+                <div class="meta" id="updateTime">等待首次测试...</div>
+            </div>
+            <div id="tableBody">
+                <div class="empty-state">
+                    <div class="icon">&#9881;</div>
+                    <div>正在等待首次优选测试...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let allResults = [];
+let sortKey = 'latency_ms';
+let sortAsc = true;
+
+async function fetchStats() {
+    try {
+        const resp = await fetch('/api/stats');
+        const stats = await resp.json();
+        document.getElementById('statTotal').textContent = stats.total || '-';
+        document.getElementById('statSuccess').textContent = stats.success || '-';
+        document.getElementById('statFail').textContent = stats.fail || '-';
+        document.getElementById('statFastest').textContent = stats.fastest_ms ? stats.fastest_ms + ' ms' : '-';
+        document.getElementById('statAvg').textContent = stats.avg_ms ? stats.avg_ms + ' ms' : '-';
+
+        const badge = document.getElementById('statusBadge');
+        const btn = document.getElementById('triggerBtn');
+        if (stats.running) {
+            badge.className = 'status-badge status-running';
+            badge.textContent = '测试中...';
+            btn.disabled = true;
+        } else {
+            badge.className = 'status-badge status-idle';
+            badge.textContent = '空闲';
+            btn.disabled = false;
+        }
+
+        if (stats.updated_at) {
+            document.getElementById('updateTime').textContent = '上次更新: ' + stats.updated_at;
+        }
+    } catch (e) { console.error('fetch stats error', e); }
+}
+
+async function fetchResults() {
+    try {
+        const resp = await fetch('/api/results');
+        allResults = await resp.json() || [];
+        updateCountryFilter();
+        renderTable();
+    } catch (e) { console.error('fetch results error', e); }
+}
+
+function updateCountryFilter() {
+    const sel = document.getElementById('filterCountry');
+    const current = sel.value;
+    const countries = [...new Set(allResults.map(r => r.proxy.country_code).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="all">全部国家</option>';
+    countries.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        sel.appendChild(opt);
+    });
+    sel.value = current;
+}
+
+function renderTable() {
+    const statusFilter = document.getElementById('filterStatus').value;
+    const countryFilter = document.getElementById('filterCountry').value;
+    const ipFilter = document.getElementById('filterIP').value.toLowerCase();
+
+    let filtered = allResults.filter(r => {
+        if (statusFilter === 'ok' && !r.success) return false;
+        if (statusFilter === 'fail' && r.success) return false;
+        if (countryFilter !== 'all' && r.proxy.country_code !== countryFilter) return false;
+        if (ipFilter && !r.proxy.ip.includes(ipFilter)) return false;
+        return true;
+    });
+
+    filtered.sort((a, b) => {
+        let va, vb;
+        switch (sortKey) {
+            case 'ip': va = a.proxy.ip; vb = b.proxy.ip; break;
+            case 'port': va = a.proxy.port; vb = b.proxy.port; break;
+            case 'country': va = a.proxy.country_code || ''; vb = b.proxy.country_code || ''; break;
+            case 'latency_ms':
+                va = a.success ? a.latency_ms : 999999;
+                vb = b.success ? b.latency_ms : 999999;
+                break;
+            case 'status':
+                va = a.success ? 0 : 1;
+                vb = b.success ? 0 : 1;
+                break;
+            default: va = 0; vb = 0;
+        }
+        if (va < vb) return sortAsc ? -1 : 1;
+        if (va > vb) return sortAsc ? 1 : -1;
+        return 0;
+    });
+
+    if (filtered.length === 0) {
+        document.getElementById('tableBody').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">&#128269;</div>
+                <div>暂无数据</div>
+            </div>`;
+        return;
+    }
+
+    const arrow = (key) => sortKey === key ? (sortAsc ? ' &#9650;' : ' &#9660;') : '';
+
+    let html = `<table>
+        <thead><tr>
+            <th>#</th>
+            <th onclick="setSort('ip')">IP<span class="sort-arrow">${arrow('ip')}</span></th>
+            <th onclick="setSort('port')">端口<span class="sort-arrow">${arrow('port')}</span></th>
+            <th onclick="setSort('country')">国家<span class="sort-arrow">${arrow('country')}</span></th>
+            <th onclick="setSort('latency_ms')">延迟(ms)<span class="sort-arrow">${arrow('latency_ms')}</span></th>
+            <th onclick="setSort('status')">状态<span class="sort-arrow">${arrow('status')}</span></th>
+            <th>操作</th>
+        </tr></thead><tbody>`;
+
+    filtered.forEach((r, i) => {
+        const addr = r.proxy.ip + ':' + r.proxy.port;
+        let statusBadge, latency;
+        if (r.success) {
+            if (r.latency_ms < 1000) {
+                statusBadge = '<span class="badge badge-ok">OK</span>';
+            } else {
+                statusBadge = '<span class="badge badge-slow">SLOW</span>';
+            }
+            latency = r.latency_ms;
+        } else {
+            statusBadge = '<span class="badge badge-fail">FAIL</span>';
+            latency = '-';
+        }
+
+        const country = r.proxy.country_code || '-';
+        const countryName = r.proxy.country || '';
+        const countryDisplay = country !== '-' ? `<span title="${countryName}">${countryToFlag(country)} ${country}</span>` : '-';
+
+        html += `<tr>
+            <td>${i + 1}</td>
+            <td class="mono">${r.proxy.ip}</td>
+            <td class="mono">${r.proxy.port}</td>
+            <td>${countryDisplay}</td>
+            <td class="mono">${latency}</td>
+            <td>${statusBadge}</td>
+            <td><button class="copy-btn" onclick="copyAddr(this, '${addr}')">复制</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('tableBody').innerHTML = html;
+}
+
+function setSort(key) {
+    if (sortKey === key) { sortAsc = !sortAsc; }
+    else { sortKey = key; sortAsc = true; }
+    renderTable();
+}
+
+function countryToFlag(code) {
+    if (!code || code.length !== 2) return '';
+    const offset = 127397;
+    return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + offset));
+}
+
+async function triggerTest() {
+    try {
+        document.getElementById('triggerBtn').disabled = true;
+        await fetch('/api/trigger', { method: 'POST' });
+    } catch (e) { console.error('trigger error', e); }
+}
+
+function copyAddr(btn, addr) {
+    navigator.clipboard.writeText(addr).then(() => {
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+    });
+}
+
+// Auto refresh
+setInterval(() => { fetchStats(); fetchResults(); }, 5000);
+fetchStats();
+fetchResults();
+</script>
+</body>
+</html>
