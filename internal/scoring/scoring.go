@@ -31,7 +31,7 @@ type scorer interface {
 }
 
 // ScoreProxies enriches proxies with fraud/abuse scores from configured APIs.
-// It uses a daily disk cache to avoid redundant queries.
+// IPQS results are cached for 30 days; Scamalytics/AbuseIPDB are cached daily.
 // Proxies are mutated in-place (same pattern as geo.LookupCountries).
 func ScoreProxies(ctx context.Context, proxies model.ProxyList, cfg Config) {
 	if !cfg.HasAnyKey() {
@@ -52,7 +52,8 @@ func ScoreProxies(ctx context.Context, proxies model.ProxyList, cfg Config) {
 
 	// Load cache
 	cache := loadCache(cfg.CachePath)
-	today := time.Now().Format("2006-01-02")
+	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	// Build unique IP -> proxy index map
 	ipIndex := make(map[string][]int)
@@ -64,14 +65,28 @@ func ScoreProxies(ctx context.Context, proxies model.ProxyList, cfg Config) {
 		ipIndex[p.IP] = append(ipIndex[p.IP], i)
 	}
 
-	// Separate cached (fresh) from uncached IPs
+	// Per-IP: determine which scorers need querying based on per-service cache expiry
 	var toQuery []string
+	queryPlans := make(map[string][]scorer)
 	cachedScores := make(map[string]cachedScore)
 	for _, ip := range uniqueIPs {
-		if entry, ok := cache.get(ip); ok && entry.Date == today {
+		entry, hasCache := cache.get(ip)
+
+		var needed []scorer
+		for _, s := range scorers {
+			if !hasCache || !isFresh(entry, s.Name(), now) {
+				needed = append(needed, s)
+			}
+		}
+
+		if len(needed) == 0 {
 			cachedScores[ip] = entry
 		} else {
 			toQuery = append(toQuery, ip)
+			queryPlans[ip] = needed
+			if hasCache {
+				cachedScores[ip] = entry // preserve existing cached values
+			}
 		}
 	}
 
@@ -88,10 +103,10 @@ func ScoreProxies(ctx context.Context, proxies model.ProxyList, cfg Config) {
 		default:
 		}
 
-		result := queryAllScorers(ctx, scorers, ip)
-		result.Date = today
-		cache.set(ip, result)
-		cachedScores[ip] = result
+		result := queryAllScorers(ctx, queryPlans[ip], ip)
+		merged := mergeScores(cachedScores[ip], result, today)
+		cache.set(ip, merged)
+		cachedScores[ip] = merged
 
 		fmt.Printf("\r🔍 评分进度: %d/%d", cached+i+1, total)
 
@@ -158,5 +173,44 @@ func queryAllScorers(ctx context.Context, scorers []scorer, ip string) cachedSco
 	}
 
 	wg.Wait()
+	return result
+}
+
+// isFresh checks if a specific scorer's cached value is still valid.
+// IPQS: 30-day cache; Scamalytics/AbuseIPDB: daily cache.
+func isFresh(entry cachedScore, scorerName string, now time.Time) bool {
+	switch scorerName {
+	case "ipqs":
+		if entry.IPQS == nil {
+			return false
+		}
+		dateStr := entry.IPQSDate
+		if dateStr == "" {
+			dateStr = entry.Date // legacy entries without IPQSDate
+		}
+		d, err := time.Parse("2006-01-02", dateStr)
+		return err == nil && now.Sub(d) < 30*24*time.Hour
+	case "scamalytics":
+		return entry.Scamalytics != nil && entry.Date == now.Format("2006-01-02")
+	case "abuseipdb":
+		return entry.AbuseIPDB != nil && entry.Date == now.Format("2006-01-02")
+	}
+	return false
+}
+
+// mergeScores merges newly queried scores into an existing cache entry.
+func mergeScores(old, new cachedScore, today string) cachedScore {
+	result := old
+	result.Date = today
+	if new.IPQS != nil {
+		result.IPQS = new.IPQS
+		result.IPQSDate = today
+	}
+	if new.Scamalytics != nil {
+		result.Scamalytics = new.Scamalytics
+	}
+	if new.AbuseIPDB != nil {
+		result.AbuseIPDB = new.AbuseIPDB
+	}
 	return result
 }

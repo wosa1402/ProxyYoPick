@@ -12,7 +12,8 @@ import (
 
 // cachedScore represents the cached scoring result for a single IP.
 type cachedScore struct {
-	Date        string `json:"date"`                  // "2006-01-02"
+	Date        string `json:"date"`                  // "2006-01-02" — last query date for scamalytics/abuseipdb
+	IPQSDate    string `json:"ipqs_date,omitempty"`   // separate date for IPQS (30-day cache)
 	IPQS        *int   `json:"ipqs,omitempty"`
 	Scamalytics *int   `json:"scamalytics,omitempty"`
 	AbuseIPDB   *int   `json:"abuseipdb,omitempty"`
@@ -59,11 +60,11 @@ func loadCache(path string) *scoreCache {
 		return c
 	}
 
-	// Prune entries older than 7 days
+	// Prune entries older than 31 days (IPQS caches for 30 days)
 	now := time.Now()
 	for ip, entry := range c.entries {
 		entryDate, err := time.Parse("2006-01-02", entry.Date)
-		if err != nil || now.Sub(entryDate) > 7*24*time.Hour {
+		if err != nil || now.Sub(entryDate) > 31*24*time.Hour {
 			delete(c.entries, ip)
 		}
 	}
