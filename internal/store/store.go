@@ -20,6 +20,7 @@ type pool struct {
 	results   []model.TestResult
 	updatedAt time.Time
 	running   bool
+	proxies   model.ProxyList // accumulated proxy list (manual pool)
 }
 
 // Store holds test results for multiple pools with thread-safe access.
@@ -126,4 +127,48 @@ func (s *Store) GetStats(name PoolName) Stats {
 	}
 
 	return stats
+}
+
+// AddProxies appends new proxies to a pool's accumulated list, deduplicating.
+// Returns the number of newly added proxies and the new total.
+func (s *Store) AddProxies(name PoolName, newProxies model.ProxyList) (added int, total int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.getPool(name)
+
+	seen := make(map[string]struct{}, len(p.proxies))
+	for _, proxy := range p.proxies {
+		seen[proxy.Key()] = struct{}{}
+	}
+
+	for _, proxy := range newProxies {
+		key := proxy.Key()
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			p.proxies = append(p.proxies, proxy)
+			added++
+		}
+	}
+
+	return added, len(p.proxies)
+}
+
+// GetProxies returns a copy of the accumulated proxy list for a pool.
+func (s *Store) GetProxies(name PoolName) model.ProxyList {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	p := s.getPool(name)
+	out := make(model.ProxyList, len(p.proxies))
+	copy(out, p.proxies)
+	return out
+}
+
+// ClearProxies clears the accumulated proxy list and results for a pool.
+func (s *Store) ClearProxies(name PoolName) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.getPool(name)
+	p.proxies = nil
+	p.results = nil
+	p.updatedAt = time.Time{}
 }

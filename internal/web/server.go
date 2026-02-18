@@ -58,6 +58,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/results", s.handleResults)
 	mux.HandleFunc("/api/trigger", s.handleTrigger)
 	mux.HandleFunc("/api/import", s.handleImport)
+	mux.HandleFunc("/api/clear-manual", s.handleClearManual)
 
 	// Static files
 	staticFS, err := fs.Sub(staticFiles, "static")
@@ -217,6 +218,7 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleImport accepts proxy text (ip:port per line) via POST body or file upload.
+// New proxies are merged with the existing manual pool (deduplicated).
 func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -298,12 +300,39 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start test in background
-	go s.runManualTest(s.ctx, proxies)
+	// Merge with existing manual pool proxies (deduplicate)
+	added, total := s.store.AddProxies(store.PoolManual, proxies)
+	allProxies := s.store.GetProxies(store.PoolManual)
+
+	// Start test with the full merged proxy list
+	go s.runManualTest(s.ctx, allProxies)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "started",
-		"count":  len(proxies),
+		"added":  added,
+		"total":  total,
 	})
+}
+
+// handleClearManual clears the manual proxy pool.
+func (s *Server) handleClearManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.store.IsRunning(store.PoolManual) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "手动池测试正在运行中",
+		})
+		return
+	}
+
+	s.store.ClearProxies(store.PoolManual)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})
 }

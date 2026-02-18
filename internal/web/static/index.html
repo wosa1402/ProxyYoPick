@@ -98,6 +98,10 @@
         .import-msg { font-size: 0.8rem; margin-top: 0.5rem; padding: 0.4rem 0.75rem; border-radius: 0.25rem; }
         .import-msg.success { background: #052e16; color: #4ade80; }
         .import-msg.error { background: #450a0a; color: #f87171; }
+        .import-textarea.dragover { border-color: #38bdf8; background: #1e293b; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-danger:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
 
         /* Table */
         .table-wrapper {
@@ -217,14 +221,15 @@
                 <h3>导入代理</h3>
                 <div class="import-row">
                     <textarea class="import-textarea" id="importText"
-                        placeholder="输入代理列表，每行一个，格式: ip:port&#10;例如:&#10;1.2.3.4:1080&#10;5.6.7.8:8080&#10;socks5://9.10.11.12:1080"></textarea>
+                        placeholder="输入代理列表，每行一个，格式: ip:port&#10;例如:&#10;1.2.3.4:1080&#10;5.6.7.8:8080&#10;socks5://9.10.11.12:1080&#10;&#10;支持拖拽 TXT 文件到此处"></textarea>
                     <div class="import-actions">
                         <label class="file-label" id="fileLabel">
                             选择 TXT 文件
                             <input type="file" class="file-input" id="fileInput" accept=".txt,.csv,.text" onchange="handleFileSelect(event)">
                         </label>
                         <button class="btn btn-success" id="importBtn" onclick="submitImport()">导入并测试</button>
-                        <div class="import-hint">支持 txt 文件上传或直接粘贴<br>格式: ip:port 每行一个</div>
+                        <button class="btn btn-danger" id="clearBtn" onclick="clearManualPool()">清空列表</button>
+                        <div class="import-hint">新导入的代理会追加到已有列表中<br>支持粘贴、选择文件或拖拽上传</div>
                     </div>
                 </div>
                 <div id="importMsg"></div>
@@ -322,9 +327,12 @@ function updateHeaderStatus() {
         badge.textContent = '空闲';
         btn.disabled = false;
     }
-    // Also disable import button if manual is running
+    // Also disable import/clear buttons if manual is running
     const importBtn = document.getElementById('importBtn');
-    if (importBtn) importBtn.disabled = state.manual.stats.running || false;
+    const clearBtn = document.getElementById('clearBtn');
+    const manualRunning = state.manual.stats.running || false;
+    if (importBtn) importBtn.disabled = manualRunning;
+    if (clearBtn) clearBtn.disabled = manualRunning;
 }
 
 function updateTabCounts() {
@@ -541,7 +549,8 @@ function handleFileSelect(event) {
 }
 
 async function submitImport() {
-    const text = document.getElementById('importText').value.trim();
+    const textarea = document.getElementById('importText');
+    const text = textarea.value.trim();
     if (!text) {
         showImportMsg('error', '请输入代理列表或选择文件');
         return;
@@ -557,7 +566,13 @@ async function submitImport() {
         const data = await resp.json();
 
         if (data.status === 'started') {
-            showImportMsg('success', `已提交 ${data.count} 个代理，正在测试中...`);
+            textarea.value = '';
+            document.getElementById('fileLabel').textContent = '选择 TXT 文件';
+            document.getElementById('fileInput').value = '';
+            const msg = data.added > 0
+                ? `新增 ${data.added} 个代理，共 ${data.total} 个，正在测试中...`
+                : `无新增（全部已存在），共 ${data.total} 个，正在重新测试...`;
+            showImportMsg('success', msg);
             switchPool('manual');
         } else {
             showImportMsg('error', data.error || '导入失败');
@@ -573,6 +588,56 @@ function showImportMsg(type, msg) {
     const el = document.getElementById('importMsg');
     el.innerHTML = `<div class="import-msg ${type}">${msg}</div>`;
     setTimeout(() => { el.innerHTML = ''; }, 8000);
+}
+
+// -- Drag & Drop --
+(function setupDragDrop() {
+    const textarea = document.getElementById('importText');
+    textarea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        textarea.classList.add('dragover');
+    });
+    textarea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        textarea.classList.remove('dragover');
+    });
+    textarea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        textarea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+        const file = files[0];
+        if (!file.name.match(/\.(txt|csv|text)$/i)) {
+            showImportMsg('error', '仅支持 .txt / .csv 文件');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const existing = textarea.value.trim();
+            textarea.value = existing ? existing + '\n' + ev.target.result : ev.target.result;
+        };
+        reader.readAsText(file);
+    });
+})();
+
+// -- Clear Manual Pool --
+async function clearManualPool() {
+    if (!confirm('确定清空手动导入的代理列表？')) return;
+    try {
+        const resp = await fetch('/api/clear-manual', { method: 'POST' });
+        const data = await resp.json();
+        if (data.status === 'cleared') {
+            showImportMsg('success', '已清空手动代理列表');
+            await refreshAll();
+        } else {
+            showImportMsg('error', data.error || '清空失败');
+        }
+    } catch (e) {
+        showImportMsg('error', '请求失败: ' + e.message);
+    }
 }
 
 // -- Auto refresh --
