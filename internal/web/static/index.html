@@ -367,6 +367,12 @@ function renderStats(pool) {
             <span style="color:#fbbf24">${qDc}</span> /
             <span style="color:#f87171">${qProxy}</span>
         </div></div>
+        ${pool === 'auto' && s.accumulated > 0 ? `
+        <div class="stat-card"><div class="label">累积 / 存活 / 失效</div><div class="value" style="font-size:1.2rem">
+            <span style="color:#38bdf8">${s.accumulated}</span> /
+            <span style="color:#4ade80">${s.live}</span> /
+            <span style="color:#6b7280">${s.dead_count}</span>
+        </div></div>` : ''}
     `;
     const timeEl = document.getElementById('updateTime' + cap(pool));
     if (s.updated_at) timeEl.textContent = '上次更新: ' + s.updated_at;

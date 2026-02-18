@@ -109,6 +109,8 @@ func (s *Server) scheduler(ctx context.Context) {
 }
 
 // runPoolTest scrapes and tests proxies for the auto pool.
+// For the auto pool: merges scraped proxies into accumulated pool, revives dead ones,
+// tests only live proxies, and updates health (3 consecutive failures = dead).
 func (s *Server) runPoolTest(ctx context.Context, pool store.PoolName) {
 	if s.store.IsRunning(pool) {
 		slog.Info("test already running, skipping", "pool", pool)
@@ -132,9 +134,23 @@ func (s *Server) runPoolTest(ctx context.Context, pool store.PoolName) {
 		return
 	}
 
-	results := s.testProxies(ctx, proxies)
+	// Merge scraped proxies into accumulated pool + revive dead ones
+	added, revived := s.store.MergeAndRevive(pool, proxies)
+	slog.Info("proxies merged", "pool", pool, "scraped", len(proxies), "new", added, "revived", revived)
+
+	// Test only live (non-dead) proxies
+	liveProxies := s.store.GetLiveProxies(pool)
+	slog.Info("testing live proxies", "pool", pool, "live", len(liveProxies))
+
+	results := s.testProxies(ctx, liveProxies)
+
+	// Update health: 3 consecutive failures = dead
+	s.store.UpdateHealth(pool, results, 3)
+
 	s.store.SetResults(pool, results)
-	slog.Info("proxy test completed", "pool", pool, "total", len(results))
+	stats := s.store.GetStats(pool)
+	slog.Info("proxy test completed", "pool", pool, "tested", len(results),
+		"accumulated", stats.Accumulated, "live", stats.Live, "dead", stats.DeadCount)
 }
 
 // runManualTest tests a given proxy list and stores results in the manual pool.
@@ -155,6 +171,7 @@ func (s *Server) runManualTest(ctx context.Context, proxies model.ProxyList) {
 }
 
 // testProxies is the shared test + geo lookup logic.
+// Geo lookup runs on all IPs (free). Scoring runs only on successful IPs.
 func (s *Server) testProxies(ctx context.Context, proxies model.ProxyList) []model.TestResult {
 	t := tester.NewSOCKS5Tester(s.cfg.TargetURL, s.cfg.Timeout)
 	results := tester.RunPool(ctx, t, proxies, tester.PoolConfig{Workers: s.cfg.Concurrency}, nil)
@@ -166,8 +183,21 @@ func (s *Server) testProxies(ctx context.Context, proxies model.ProxyList) []mod
 	}
 	geo.LookupCountries(ctx, proxyList)
 
-	// IP scoring enrichment
-	scoring.ScoreProxies(ctx, proxyList, s.cfg.ScoreCfg)
+	// Score only successful proxies to save API quota
+	var successList model.ProxyList
+	for i := range results {
+		if results[i].Success {
+			successList = append(successList, proxyList[i])
+		}
+	}
+	scoring.ScoreProxies(ctx, successList, s.cfg.ScoreCfg)
+	si := 0
+	for i := range results {
+		if results[i].Success {
+			proxyList[i] = successList[si]
+			si++
+		}
+	}
 
 	for i := range results {
 		results[i].Proxy = proxyList[i]

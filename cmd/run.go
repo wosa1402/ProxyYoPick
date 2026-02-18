@@ -70,8 +70,21 @@ func testAndOutput(ctx context.Context, proxies model.ProxyList) error {
 	}
 	geo.LookupCountries(ctx, proxyPtrs)
 
-	// IP scoring enrichment
-	scoring.ScoreProxies(ctx, proxyPtrs, resolveScoreCfg())
+	// Score only successful proxies to save API quota
+	var successList model.ProxyList
+	for i := range results {
+		if results[i].Success {
+			successList = append(successList, proxyPtrs[i])
+		}
+	}
+	scoring.ScoreProxies(ctx, successList, resolveScoreCfg())
+	si := 0
+	for i := range results {
+		if results[i].Success {
+			proxyPtrs[i] = successList[si]
+			si++
+		}
+	}
 
 	for i := range results {
 		results[i].Proxy = proxyPtrs[i]
