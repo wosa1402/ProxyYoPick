@@ -132,7 +132,7 @@ func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) *bool {
 
 	dialer, err := proxy.SOCKS5("tcp", p.Address(), nil, proxy.Direct)
 	if err != nil {
-		slog.Debug("apple check: socks5 dial failed", "proxy", p.Address(), "error", err)
+		slog.Info("apple check: socks5 dial failed", "proxy", p.Address(), "error", err)
 		return nil // connection error → unknown
 	}
 
@@ -160,10 +160,12 @@ func checkOne(ctx context.Context, p model.Proxy, timeout time.Duration) *bool {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		slog.Debug("apple check: request failed", "proxy", p.Address(), "error", err)
+		slog.Info("apple check: request failed", "proxy", p.Address(), "error", err)
 		return nil // timeout/connection error → unknown
 	}
 	defer resp.Body.Close()
+
+	slog.Info("apple check: got response", "proxy", p.Address(), "status", resp.StatusCode)
 
 	// Layer 1: status code check
 	if resp.StatusCode == 403 || resp.StatusCode == 503 {
