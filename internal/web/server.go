@@ -63,6 +63,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/trigger", s.handleTrigger)
 	mux.HandleFunc("/api/import", s.handleImport)
 	mux.HandleFunc("/api/clear-manual", s.handleClearManual)
+	mux.HandleFunc("/api/proxies", s.handleProxies)
 
 	// Static files
 	staticFS, err := fs.Sub(staticFiles, "static")
@@ -248,7 +249,17 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go s.runPoolTest(s.ctx, pool)
+	if pool == store.PoolManual {
+		allProxies := s.store.GetProxies(store.PoolManual)
+		if len(allProxies) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"status": "empty"})
+			return
+		}
+		go s.runManualTest(s.ctx, allProxies)
+	} else {
+		go s.runPoolTest(s.ctx, pool)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "started"})
@@ -349,6 +360,58 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 		"status": "started",
 		"added":  added,
 		"total":  total,
+	})
+}
+
+// handleProxies returns alive proxies, optionally filtered by country.
+// Query params:
+//
+//	pool=auto|manual (default: auto)
+//	country=US       (ISO 3166-1 alpha-2 code or country name, case-insensitive)
+func (s *Server) handleProxies(w http.ResponseWriter, r *http.Request) {
+	pool := poolFromQuery(r)
+	country := strings.TrimSpace(r.URL.Query().Get("country"))
+	countryUpper := strings.ToUpper(country)
+
+	results, _ := s.store.GetResults(pool)
+
+	type proxyEntry struct {
+		IP          string `json:"ip"`
+		Port        int    `json:"port"`
+		Country     string `json:"country,omitempty"`
+		CountryCode string `json:"country_code,omitempty"`
+		LatencyMs   int64  `json:"latency_ms"`
+		Quality     string `json:"quality,omitempty"`
+		ISP         string `json:"isp,omitempty"`
+	}
+
+	var proxies []proxyEntry
+	for _, r := range results {
+		if !r.Success {
+			continue
+		}
+		if country != "" {
+			if !strings.EqualFold(r.Proxy.CountryCode, countryUpper) &&
+				!strings.EqualFold(r.Proxy.Country, country) {
+				continue
+			}
+		}
+		proxies = append(proxies, proxyEntry{
+			IP:          r.Proxy.IP,
+			Port:        r.Proxy.Port,
+			Country:     r.Proxy.Country,
+			CountryCode: r.Proxy.CountryCode,
+			LatencyMs:   r.LatencyMs,
+			Quality:     r.Proxy.Quality,
+			ISP:         r.Proxy.ISP,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"pool":  string(pool),
+		"total": len(proxies),
+		"proxies": proxies,
 	})
 }
 
