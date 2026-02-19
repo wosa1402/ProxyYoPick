@@ -268,18 +268,21 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleImport accepts proxy text (ip:port per line) via POST body or file upload.
-// New proxies are merged with the existing manual pool (deduplicated).
+// New proxies are merged with the specified pool (deduplicated).
+// Query params: pool=auto|manual (default: manual)
 func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	if s.store.IsRunning(store.PoolManual) {
+	pool := poolFromQuery(r)
+
+	if s.store.IsRunning(pool) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "error",
-			"error":  "手动池测试正在运行中",
+			"error":  "该池测试正在运行中",
 		})
 		return
 	}
@@ -350,12 +353,14 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Merge with existing manual pool proxies (deduplicate)
-	added, total := s.store.AddProxies(store.PoolManual, proxies)
-	allProxies := s.store.GetProxies(store.PoolManual)
+	added, total := s.store.AddProxies(pool, proxies)
 
-	// Start test with the full merged proxy list
-	go s.runManualTest(s.ctx, allProxies)
+	if pool == store.PoolAuto {
+		go s.runPoolTest(s.ctx, store.PoolAuto)
+	} else {
+		allProxies := s.store.GetProxies(store.PoolManual)
+		go s.runManualTest(s.ctx, allProxies)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
