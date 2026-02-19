@@ -19,6 +19,56 @@ type poolSnapshot struct {
 	UpdatedAt time.Time               `json:"updated_at"`
 }
 
+// PoolSnapshot is the exported version used for data export/import via the web UI.
+type PoolSnapshot struct {
+	Proxies   model.ProxyList         `json:"proxies"`
+	Health    map[string]*ProxyHealth `json:"health"`
+	Results   []model.TestResult      `json:"results"`
+	UpdatedAt time.Time               `json:"updated_at"`
+}
+
+// ExportPool returns a deep copy of the pool's full state for export.
+func (s *Store) ExportPool(name PoolName) *PoolSnapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	p := s.getPool(name)
+
+	proxies := make(model.ProxyList, len(p.proxies))
+	copy(proxies, p.proxies)
+
+	health := make(map[string]*ProxyHealth, len(p.health))
+	for k, v := range p.health {
+		h := *v
+		health[k] = &h
+	}
+
+	results := make([]model.TestResult, len(p.results))
+	copy(results, p.results)
+
+	return &PoolSnapshot{
+		Proxies:   proxies,
+		Health:    health,
+		Results:   results,
+		UpdatedAt: p.updatedAt,
+	}
+}
+
+// ImportPool replaces a pool's state with the given snapshot.
+// Rebuilds TestResult.Latency from LatencyMs (same as Load).
+func (s *Store) ImportPool(name PoolName, snap *PoolSnapshot) {
+	for i := range snap.Results {
+		snap.Results[i].Latency = time.Duration(snap.Results[i].LatencyMs) * time.Millisecond
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.getPool(name)
+	p.proxies = snap.Proxies
+	p.health = snap.Health
+	p.results = snap.Results
+	p.updatedAt = snap.UpdatedAt
+}
+
 // defaultDataDir returns ~/.proxyyopick/
 func defaultDataDir() string {
 	home, err := os.UserHomeDir()

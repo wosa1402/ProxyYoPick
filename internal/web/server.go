@@ -64,6 +64,8 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/import", s.handleImport)
 	mux.HandleFunc("/api/clear-manual", s.handleClearManual)
 	mux.HandleFunc("/api/proxies", s.handleProxies)
+	mux.HandleFunc("/api/export", s.handleExport)
+	mux.HandleFunc("/api/snapshot-import", s.handleSnapshotImport)
 
 	// Static files
 	staticFS, err := fs.Sub(staticFiles, "static")
@@ -436,4 +438,78 @@ func (s *Server) handleClearManual(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})
+}
+
+// handleExport returns a pool's full snapshot as a downloadable JSON file.
+func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+	pool := poolFromQuery(r)
+	snap := s.store.ExportPool(pool)
+
+	filename := fmt.Sprintf("proxyyopick_%s_%s.json", pool, time.Now().Format("20060102_150405"))
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	json.NewEncoder(w).Encode(snap)
+}
+
+// handleSnapshotImport restores a pool's state from a previously-exported JSON snapshot.
+func (s *Server) handleSnapshotImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pool := poolFromQuery(r)
+
+	if s.store.IsRunning(pool) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "该池测试正在运行中，请等待完成后再导入",
+		})
+		return
+	}
+
+	r.ParseMultipartForm(64 << 20)
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "未提供文件",
+		})
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "读取文件失败",
+		})
+		return
+	}
+
+	var snap store.PoolSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "JSON 解析失败，请确保文件是有效的快照导出",
+		})
+		return
+	}
+
+	s.store.ImportPool(pool, &snap)
+	s.store.Save("")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "imported",
+		"pool":    string(pool),
+		"proxies": len(snap.Proxies),
+		"results": len(snap.Results),
+	})
 }

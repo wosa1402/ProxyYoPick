@@ -207,7 +207,14 @@
             <div class="table-wrapper">
                 <div class="table-header">
                     <h2>自动爬取代理</h2>
-                    <div class="meta" id="updateTimeAuto">等待首次测试...</div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn btn-secondary" onclick="exportPool('auto')" style="font-size:0.8rem; padding:0.35rem 0.75rem;">导出快照</button>
+                        <label class="file-label" style="font-size:0.8rem; padding:0.35rem 0.75rem; margin:0;">
+                            导入快照
+                            <input type="file" class="file-input" accept=".json" onchange="importSnapshot(event, 'auto')">
+                        </label>
+                        <div class="meta" id="updateTimeAuto">等待首次测试...</div>
+                    </div>
                 </div>
                 <div id="tableBodyAuto">
                     <div class="empty-state"><div class="icon">&#9881;</div><div>正在等待首次优选测试...</div></div>
@@ -263,7 +270,14 @@
             <div class="table-wrapper">
                 <div class="table-header">
                     <h2>手动导入代理</h2>
-                    <div class="meta" id="updateTimeManual">尚未导入</div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn btn-secondary" onclick="exportPool('manual')" style="font-size:0.8rem; padding:0.35rem 0.75rem;">导出快照</button>
+                        <label class="file-label" style="font-size:0.8rem; padding:0.35rem 0.75rem; margin:0;">
+                            导入快照
+                            <input type="file" class="file-input" accept=".json" onchange="importSnapshot(event, 'manual')">
+                        </label>
+                        <div class="meta" id="updateTimeManual">尚未导入</div>
+                    </div>
                 </div>
                 <div id="tableBodyManual">
                     <div class="empty-state"><div class="icon">&#128230;</div><div>请在上方导入代理列表</div></div>
@@ -644,6 +658,56 @@ async function clearManualPool() {
     } catch (e) {
         showImportMsg('error', '请求失败: ' + e.message);
     }
+}
+
+// -- Snapshot Export/Import --
+function exportPool(pool) {
+    window.location.href = '/api/export?pool=' + pool;
+}
+
+async function importSnapshot(event, pool) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+        alert('请选择 .json 快照文件');
+        event.target.value = '';
+        return;
+    }
+
+    if (!confirm('导入快照将替换 ' + (pool === 'auto' ? '自动' : '手动') + ' 池的所有数据，确定继续？')) {
+        event.target.value = '';
+        return;
+    }
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+        const resp = await fetch('/api/snapshot-import?pool=' + pool, { method: 'POST', body: form });
+        const data = await resp.json();
+
+        if (data.status === 'imported') {
+            const msg = '快照导入成功：' + data.proxies + ' 个代理，' + data.results + ' 条结果';
+            if (pool === 'manual') {
+                showImportMsg('success', msg);
+            } else {
+                alert(msg);
+            }
+            await refreshAll();
+        } else {
+            const errMsg = '导入失败：' + (data.error || '未知错误');
+            if (pool === 'manual') {
+                showImportMsg('error', errMsg);
+            } else {
+                alert(errMsg);
+            }
+        }
+    } catch (e) {
+        alert('导入请求失败：' + e.message);
+    }
+
+    event.target.value = '';
 }
 
 // -- Auto refresh --
