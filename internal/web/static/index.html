@@ -179,23 +179,6 @@
 
         <!-- Auto Pool -->
         <div class="pool-panel active" id="panelAuto">
-            <div class="import-section">
-                <h3>手动补充代理</h3>
-                <div class="import-row">
-                    <textarea class="import-textarea" id="importTextAuto"
-                        placeholder="输入代理列表，每行一个，格式: ip:port&#10;例如:&#10;1.2.3.4:1080&#10;5.6.7.8:8080&#10;&#10;支持拖拽 TXT 文件到此处"></textarea>
-                    <div class="import-actions">
-                        <label class="file-label" id="fileLabelAuto">
-                            <span id="fileLabelTextAuto">选择 TXT 文件</span>
-                            <input type="file" class="file-input" id="fileInputAuto" accept=".txt,.csv,.text" onchange="handleFileSelectAuto(event)">
-                        </label>
-                        <button class="btn btn-success" id="importBtnAuto" onclick="submitImport('auto')">添加并测试</button>
-                        <div class="import-hint">手动补充的代理会加入自动池，并触发一次完整测试</div>
-                    </div>
-                </div>
-                <div id="importMsgAuto"></div>
-            </div>
-
             <div class="stats-grid" id="statsAuto"></div>
             <div class="filter-bar">
                 <select id="filterStatusAuto" onchange="renderTable('auto')">
@@ -251,7 +234,7 @@
                             <span id="fileLabelText">选择 TXT 文件</span>
                             <input type="file" class="file-input" id="fileInput" accept=".txt,.csv,.text" onchange="handleFileSelect(event)">
                         </label>
-                        <button class="btn btn-success" id="importBtn" onclick="submitImport('manual')">导入并测试</button>
+                        <button class="btn btn-success" id="importBtn" onclick="submitImport()">导入并测试</button>
                         <button class="btn btn-danger" id="clearBtn" onclick="clearManualPool()">清空列表</button>
                         <div class="import-hint">新导入的代理会追加到已有列表中<br>支持粘贴、选择文件或拖拽上传</div>
                     </div>
@@ -364,10 +347,6 @@ function updateHeaderStatus() {
     const manualRunning = state.manual.stats.running || false;
     if (importBtn) importBtn.disabled = manualRunning;
     if (clearBtn) clearBtn.disabled = manualRunning;
-    // Disable auto import button if auto is running
-    const importBtnAuto = document.getElementById('importBtnAuto');
-    const autoRunning = state.auto.stats.running || false;
-    if (importBtnAuto) importBtnAuto.disabled = autoRunning;
 }
 
 function updateTabCounts() {
@@ -589,70 +568,51 @@ function handleFileSelect(event) {
     reader.readAsText(file);
 }
 
-function handleFileSelectAuto(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    document.getElementById('fileLabelTextAuto').textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const textarea = document.getElementById('importTextAuto');
-        const existing = textarea.value.trim();
-        textarea.value = existing ? existing + '\n' + e.target.result : e.target.result;
-    };
-    reader.readAsText(file);
-}
-
-async function submitImport(pool) {
-    const isAuto = pool === 'auto';
-    const textarea = document.getElementById(isAuto ? 'importTextAuto' : 'importText');
+async function submitImport() {
+    const textarea = document.getElementById('importText');
     const text = textarea.value.trim();
     if (!text) {
-        showImportMsg(pool, 'error', '请输入代理列表或选择文件');
+        showImportMsg('error', '请输入代理列表或选择文件');
         return;
     }
 
-    const importBtn = document.getElementById(isAuto ? 'importBtnAuto' : 'importBtn');
+    const importBtn = document.getElementById('importBtn');
     importBtn.disabled = true;
 
     try {
         const form = new FormData();
         form.append('text', text);
-        const resp = await fetch('/api/import?pool=' + pool, { method: 'POST', body: form });
+        const resp = await fetch('/api/import', { method: 'POST', body: form });
         const data = await resp.json();
 
         if (data.status === 'started') {
             textarea.value = '';
-            if (isAuto) {
-                document.getElementById('fileLabelTextAuto').textContent = '选择 TXT 文件';
-                document.getElementById('fileInputAuto').value = '';
-            } else {
-                document.getElementById('fileLabelText').textContent = '选择 TXT 文件';
-                document.getElementById('fileInput').value = '';
-            }
+            document.getElementById('fileLabelText').textContent = '选择 TXT 文件';
+            document.getElementById('fileInput').value = '';
             const msg = data.added > 0
                 ? `新增 ${data.added} 个代理，共 ${data.total} 个，正在测试中...`
                 : `无新增（全部已存在），共 ${data.total} 个，正在重新测试...`;
-            showImportMsg(pool, 'success', msg);
-            if (!isAuto) switchPool('manual');
+            showImportMsg('success', msg);
+            switchPool('manual');
         } else {
-            showImportMsg(pool, 'error', data.error || '导入失败');
+            showImportMsg('error', data.error || '导入失败');
             importBtn.disabled = false;
         }
     } catch (e) {
-        showImportMsg(pool, 'error', '请求失败: ' + e.message);
+        showImportMsg('error', '请求失败: ' + e.message);
         importBtn.disabled = false;
     }
 }
 
-function showImportMsg(pool, type, msg) {
-    const el = document.getElementById(pool === 'auto' ? 'importMsgAuto' : 'importMsg');
+function showImportMsg(type, msg) {
+    const el = document.getElementById('importMsg');
     el.innerHTML = `<div class="import-msg ${type}">${msg}</div>`;
     setTimeout(() => { el.innerHTML = ''; }, 8000);
 }
 
 // -- Drag & Drop --
-function setupDragDrop(textareaId, pool) {
-    const textarea = document.getElementById(textareaId);
+(function setupDragDrop() {
+    const textarea = document.getElementById('importText');
     textarea.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -671,7 +631,7 @@ function setupDragDrop(textareaId, pool) {
         if (files.length === 0) return;
         const file = files[0];
         if (!file.name.match(/\.(txt|csv|text)$/i)) {
-            showImportMsg(pool, 'error', '仅支持 .txt / .csv 文件');
+            showImportMsg('error', '仅支持 .txt / .csv 文件');
             return;
         }
         const reader = new FileReader();
@@ -681,9 +641,7 @@ function setupDragDrop(textareaId, pool) {
         };
         reader.readAsText(file);
     });
-}
-setupDragDrop('importText', 'manual');
-setupDragDrop('importTextAuto', 'auto');
+})();
 
 // -- Clear Manual Pool --
 async function clearManualPool() {
@@ -692,13 +650,13 @@ async function clearManualPool() {
         const resp = await fetch('/api/clear-manual', { method: 'POST' });
         const data = await resp.json();
         if (data.status === 'cleared') {
-            showImportMsg('manual', 'success', '已清空手动代理列表');
+            showImportMsg('success', '已清空手动代理列表');
             await refreshAll();
         } else {
-            showImportMsg('manual', 'error', data.error || '清空失败');
+            showImportMsg('error', data.error || '清空失败');
         }
     } catch (e) {
-        showImportMsg('manual', 'error', '请求失败: ' + e.message);
+        showImportMsg('error', '请求失败: ' + e.message);
     }
 }
 
@@ -731,11 +689,19 @@ async function importSnapshot(event, pool) {
 
         if (data.status === 'imported') {
             const msg = '快照导入成功：' + data.proxies + ' 个代理，' + data.results + ' 条结果';
-            showImportMsg(pool, 'success', msg);
+            if (pool === 'manual') {
+                showImportMsg('success', msg);
+            } else {
+                alert(msg);
+            }
             await refreshAll();
         } else {
             const errMsg = '导入失败：' + (data.error || '未知错误');
-            showImportMsg(pool, 'error', errMsg);
+            if (pool === 'manual') {
+                showImportMsg('error', errMsg);
+            } else {
+                alert(errMsg);
+            }
         }
     } catch (e) {
         alert('导入请求失败：' + e.message);
