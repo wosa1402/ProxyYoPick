@@ -84,8 +84,16 @@ func poolFileName(name PoolName) string {
 }
 
 // Save persists all non-empty pools to disk as JSON files.
+// If DATABASE_URL is set, persists to Postgres instead.
 // If dir is empty, defaults to ~/.proxyyopick/.
 func (s *Store) Save(dir string) {
+	if pgEnabled() {
+		if err := s.saveToPG(); err != nil {
+			slog.Error("pg save failed", "error", err)
+		}
+		return
+	}
+
 	if dir == "" {
 		dir = defaultDataDir()
 	}
@@ -141,8 +149,16 @@ func saveSnapshot(dir string, name PoolName, snap *poolSnapshot) error {
 }
 
 // Load restores pool data from disk. If dir is empty, defaults to ~/.proxyyopick/.
+// If DATABASE_URL is set, loads from Postgres instead.
 // Failures are logged but do not prevent the store from starting (graceful fallback).
 func (s *Store) Load(dir string) {
+	if pgEnabled() {
+		if err := s.loadFromPG(); err != nil {
+			slog.Error("pg load failed", "error", err)
+		}
+		return
+	}
+
 	if dir == "" {
 		dir = defaultDataDir()
 	}

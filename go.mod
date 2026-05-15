@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/fatih/color v1.18.0
+	github.com/jackc/pgx/v5 v5.7.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.50.0
